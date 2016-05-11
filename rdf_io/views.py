@@ -56,11 +56,13 @@ def to_rdf(request,model,id):
     # ok so object exists and is mappable, better get down to it..
  
     gr = Graph()
-#   import pdb; pdb.set_trace()
+    import pdb; pdb.set_trace()
 #    ns_mgr = NamespaceManager(Graph())
 #    gr.namespace_manager = ns_mgr
-    gr = build_rdf(gr, obj, oml)
-    
+    try:
+        gr = build_rdf(gr, obj, oml)
+    except Exception as e:
+        raise Http404("Error during serialisation: " + str(e) )
     for ns in _nslist.keys() :
         gr.namespace_manager.bind( str(ns), namespace.Namespace(str(_nslist[ns])), override=False)
     return HttpResponse(content_type="text/turtle", content=gr.serialize(format="turtle"))
@@ -92,7 +94,14 @@ def build_rdf( gr,obj, oml ) :
                 else:
                     object = Literal(am.attr)
             else :
-                object = _as_resource(gr, getattr_path(obj,am.attr) )
+                value = getattr_path(obj,am.attr)
+                if value:
+                    if am.is_resource :
+                        object = _as_resource(gr,value)
+                    else:
+                        object = Literal(value)
+                else:
+                    continue
             gr.add( (subject, _as_resource(gr,am.predicate) , object) )
     
     return gr
