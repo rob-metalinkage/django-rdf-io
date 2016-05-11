@@ -1,0 +1,121 @@
+[{
+		"pk" : null,
+		"model" : "rdf_io.namespace",
+		"fields" : {
+			"notes" : "RDF",
+			"prefix" : "rdf",
+			"uri" : "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+		}
+	},
+	{
+		"pk" : null,
+		"model" : "rdf_io.namespace",
+		"fields" : {
+			"notes" : "RDFS",
+			"prefix" : "rdfs",
+			"uri" : "http://www.w3.org/2000/01/rdf-schema#"
+		}
+	},
+	{
+		"pk" : null,
+		"model" : "rdf_io.namespace",
+		"fields" : {
+			"notes" : "SKOS",
+			"prefix" : "skos",
+			"uri" : "http://www.w3.org/2004/02/skos/core#"
+		}
+	},
+		{
+		"pk" : null,
+		"model" : "rdf_io.namespace",
+		"fields" : {
+			"notes" : "SKOS-XL",
+			"prefix" : "skosxl",
+			"uri" : "http://www.w3.org/2008/05/skos-xl#"
+		}
+	},
+	{
+		"pk" : null,
+		"model" : "rdf_io.namespace",
+		"fields" : {
+			"notes" : "FOAF",
+			"prefix" : "foaf",
+			"uri" : "http://xmlns.com/foaf/0.1/"
+		}
+	},
+		{
+		"pk" : null,
+		"model" : "rdf_io.namespace",
+		"fields" : {
+			"notes" : "Dublin Core",
+			"prefix" : "dct",
+			"uri" : "http://purl.org/dc/terms/"
+		}
+	}
+	,
+		{
+		"pk" : null,
+		"model" : "rdf_io.namespace",
+		"fields" : {
+			"notes" : "DCAT",
+			"prefix" : "dcat",
+			"uri" : "http://www.w3.org/ns/dcat#"
+		}
+	}
+		,
+		{
+		"pk" : null,
+		"model" : "rdf_io.namespace",
+		"fields" : {
+			"notes" : "VCARD",
+			"prefix" : "vcard",
+			"uri" : "http://www.w3.org/2006/vcard/ns#"
+		}
+	}		,
+		{
+		"pk" : null,
+		"model" : "rdf_io.namespace",
+		"fields" : {
+			"notes" : "XSD",
+			"prefix" : "xsd",
+			"uri" : "http://www.w3.org/2001/XMLSchema#"
+		}
+	},
+	{
+		"pk" : null,
+		"model" : "rdf_io.objecttype",
+		"fields" : {
+			"uri" : "skos:Concept",
+			"label" : "SKOS Concept"
+		}
+	}, {
+		"pk" : null,
+		"model" : "rdf_io.objecttype",
+		"fields" : {
+			"uri" : "owl:Class",
+			"label" : "OWL Class"
+		}
+	}, {
+		"pk" : null,
+		"model" : "rdf_io.objecttype",
+		"fields" : {
+			"uri" : "void:Dataset",
+			"label" : "VoiD Dataset"
+		}
+	}, {
+		"pk" : null,
+		"model" : "rdf_io.objecttype",
+		"fields" : {
+			"uri" : "skos:ConceptScheme",
+			"label" : "SKOS ConceptScheme"
+		}
+	}, {
+		"pk" : null,
+		"model" : "rdf_io.objecttype",
+		"fields" : {
+			"uri" : "owl:ontology",
+			"label" : "OWL Ontology"
+		}
+	}
+]
+

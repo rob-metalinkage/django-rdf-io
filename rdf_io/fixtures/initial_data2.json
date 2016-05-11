@@ -1,0 +1,37 @@
+[	{
+		"pk" : null,
+		"model" : "rdf_io.objecttype",
+		"fields" : {
+			"uri" : "skos:Concept",
+			"label" : "SKOS Concept"
+		}
+	}, {
+		"pk" : null,
+		"model" : "rdf_io.objecttype",
+		"fields" : {
+			"uri" : "owl:Class",
+			"label" : "OWL Class"
+		}
+	}, {
+		"pk" : null,
+		"model" : "rdf_io.objecttype",
+		"fields" : {
+			"uri" : "void:Dataset",
+			"label" : "VoiD Dataset"
+		}
+	}, {
+		"pk" : null,
+		"model" : "rdf_io.objecttype",
+		"fields" : {
+			"uri" : "skos:ConceptScheme",
+			"label" : "SKOS ConceptScheme"
+		}
+	}, {
+		"pk" : null,
+		"model" : "rdf_io.objecttype",
+		"fields" : {
+			"uri" : "owl:ontology",
+			"label" : "OWL Ontology"
+		}
+	}
+]
