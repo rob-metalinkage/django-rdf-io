@@ -6,20 +6,48 @@ from django.contrib.contenttypes.generic import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator, URLValidator
+from django.db.models.fields.related import ReverseSingleRelatedObjectDescriptor
+import itertools
 
 # helpers
 def getattr_path(obj,path) :
-    return _getattr_related(obj, path.replace('__','.').split('.'))
+    try :
+        return _getattr_related(obj, path.replace('__','.').split('.'))
+    except ValueError as e:
+        raise ValueError("Failed to map '{}' on '{}' (cause {})".format(path, obj, e))
     
 def _getattr_related(obj, fields):
-    a = getattr(obj, fields.pop(0))
+    """
+        get an attribute - if multi-valued will be a list object!
+    """
     if not len(fields):
-        return a
-    else:
+        return [obj,]
+        
+    field = fields.pop(0)
+    # try to get - then check for django 1.7+ manager for related field
+    try: 
+        a = getattr(obj, field)
+    except AttributeError:
+        # then try to find objects of this type with a foreign key
+        try:
+            reltype = ContentType.objects.get(model=field)
+        except ContentType.DoesNotExist as e :
+            raise ValueError("Could not locate attribute or related model '{}' in element '{}'".format(field, type(obj)) )
+        # id django 1.7+ we could just use field_set to get a manager :-(
+        claz = reltype.model_class()
+        for prop,val in claz.__dict__.items() :
+            if type(val) is ReverseSingleRelatedObjectDescriptor and val.field.related.model == claz :
+                a = claz.objects.filter(**{prop : obj})
+                break
+    
+    try:
+        return itertools.chain(*(_getattr_related(xx, fields) for xx in a.all()))
+#        !list(itertools.chain(*([[1],[2]])))
+    except:
         return _getattr_related(a, fields)
 
 def validate_urisyntax(value):
-    import pdb; pdb.set_trace()
+
     if value[0:4] == 'http' :
         URLValidator(verify_exists=False).__call__(value)
     else :
