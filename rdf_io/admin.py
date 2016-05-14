@@ -5,9 +5,16 @@ from django.contrib import admin
 class ObjectTypeAdmin(admin.ModelAdmin):
     pass
 
-
+class AttributeMappingInline(admin.TabularInline):
+    model = AttributeMapping
+    # readonly_fields = ('slug','created')
+    #fields = ('code','namespace')
+    # related_search_fields = {'label' : ('name','slug')}
+    extra=1 
+    
 class ObjectMappingAdmin(admin.ModelAdmin):
     search_fields = ['content_type__name' ]
+    inlines = [   AttributeMappingInline,]
     pass
     
 class AttributeMappingAdmin(admin.ModelAdmin):

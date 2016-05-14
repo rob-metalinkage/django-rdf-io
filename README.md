@@ -19,8 +19,46 @@ in your master django project:
 	1) Define mappings for your target models using the admin interface $SERVER/admin/rdf_io
 	2) To create an online resource use $SERVER/rdf_io/to_rdf/concept/2
 
-## Status: initial capability provides for TTL serialisation of a given model (for which a mapping has been registered)
-Works with 
+### Mapping syntax
+Mapping is non trivial - because the elements of your model may need to extracted from related models 
+
+mapping is from elements in a Django model to a RDF value (a URI or a literal)
+
+source model elements may be defined using XPath-like syntax, with nesting using django filter style __, a__b .(dot) or / notation, where each element of the path may support an optional filter. 
+
+path = (literal|element([./]element)*)
+
+literal = "a quoted string" or <a 
+
+element = (property|related_model_expr)([filter])?
+
+property = a valid name of a property of a django model 
+
+related_model_expr = model_name({property})? 
+
+Notes:
+* filters on related models will be evaluated within the database using django style filters, filters on property values will be performed during serialisation.
+
+## Status: initial capability provides for TTL serialisation of a given model (for which a mapping has been registered) 
+
+## API
+
+### Serialising within python
+
+from rdf_io.views import build_rdf
+from django.contrib.contenttypes.models import ContentType
+from rdf_io.models import ObjectMapping
+
+ct = ContentType.objects.get(model=model)
+obj_mapping_list=ObjectMapping.objects.filter(content_type=ct)
+build_rdf(gr,obj, obj_mapping_list)  returns a rdflib.Graph()
+gr.serialize(format="turtle")
+
+### Serialising using django views:
+
+{SERVER_URL}/rdf_io/to_rdf/{model_name}/{model_id}
+
+
 
 # Design Goals
 
@@ -37,7 +75,8 @@ We have four types of apps then:
 
 I suspect that this may all be a fairly common pattern - but I've only seen far more heavyweight approaches to RDF trying to fully model RDF and implement SPARQL - all I want to do is spit some stuff out into an external triple-store.
 
-I have some outstanding questions: 
-* is there something in the settings framework I should exploit to propagate default mappings (app type #3 above)- or should I do somethng like create a rdf_mappings.py file per app
+default RDF serialisations are handled by loading initial_data fixtures. RDF_IO objects are defined using natural keys to allow default mappings for modules to be loaded in any order. It may be more elegant to use settings so these defaults can be customised more easily.
+
+Open questions:
 * Should i use signals to trigger the serialisation - and if so where do I set up the signals - i'd like the code to be contained in the serializer-help app
 * What have I missed or got horribly wrong?

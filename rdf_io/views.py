@@ -56,7 +56,7 @@ def to_rdf(request,model,id):
     # ok so object exists and is mappable, better get down to it..
  
     gr = Graph()
-#   import pdb; pdb.set_trace()
+    import pdb; pdb.set_trace()
 #    ns_mgr = NamespaceManager(Graph())
 #    gr.namespace_manager = ns_mgr
     try:

@@ -12,21 +12,48 @@ import itertools
 # helpers
 def getattr_path(obj,path) :
     try :
-        return _getattr_related(obj, path.replace('__','.').split('.'))
+        return _getattr_related(obj, path.replace('__','.').replace("/",".").split('.'))
+        
     except ValueError as e:
+        import traceback
+        import pdb; pdb.set_trace()
         raise ValueError("Failed to map '{}' on '{}' (cause {})".format(path, obj, e))
+def _apply_filter(val, filter) :
+    return True
     
 def _getattr_related(obj, fields):
     """
         get an attribute - if multi-valued will be a list object!
+        fields may include filters.  
     """
     if not len(fields):
-        return [obj,]
+        return [obj]
         
     field = fields.pop(0)
+    
     # try to get - then check for django 1.7+ manager for related field
-    try: 
+    try:
+        # check for lang 
+        try:
+            (field,langfield) = field.split('@')
+            if langfield[0] in ["'" , '"'] :
+                lang = langfield[1:-1]
+            else:
+                lang = _getattr_related(obj, [langfield,] + fields).pop(0)
+        except:
+            lang = None
+        # check for filter 
+        if "[" in field :
+            filter = field[ field.index("[") +1 : -1 ]
+            field = field[0:field.index("[")]
+        else:
+            filter = None
+            
         a = getattr(obj, field)
+        if not _apply_filter(a, filter) :
+            return []
+        if lang:
+            a = "@".join((a,lang))
     except AttributeError:
         # then try to find objects of this type with a foreign key
         try:
@@ -45,7 +72,7 @@ def _getattr_related(obj, fields):
 #        !list(itertools.chain(*([[1],[2]])))
     except:
         return _getattr_related(a, fields)
-
+        
 def validate_urisyntax(value):
 
     if value[0:4] == 'http' :
@@ -78,6 +105,16 @@ class EXPR_Field(models.CharField):
         super( EXPR_Field, self).__init__(*args, **kwargs)
 
 
+class FILTER_Field(models.CharField):
+    """
+        Char field for filter expression:  path=value(,value)
+    """
+
+    def __init__(self, *args, **kwargs):
+        kwargs['max_length'] = 400
+        kwargs['help_text']=_(u'path=value, eg label__label_text="frog"')
+        super( FILTER_Field, self).__init__(*args, **kwargs)
+        
     
 # Need natural keys so can reference in fixtures - let this be the uri
 
@@ -128,19 +165,27 @@ class ObjectType(models.Model):
     # check short form is registered
     def __unicode__(self):              # __unicode__ on Python 2
         return self.label 
- 
+
+class ObjectMappingManager(models.Manager):
+    def get_by_natural_key(self, name):
+        return self.get(name=name)
+                
 class ObjectMapping(models.Model):
     """
         Maps an instance of a model to a resource (i.e. a URI with a type declaration) 
     """
+    objects = ObjectMappingManager()
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    name = models.CharField(_(u'Name'),help_text=_(u'unique identifying label'),unique=True,blank=False,max_length=250,editable=True)
     id_attr = models.CharField(_(u'ID Attribute'),help_text=_(u'for nested attribute use syntax a.b.c'),blank=False,max_length=250,editable=True)
     target_uri_expr = EXPR_Field(_(u'target namespace expression'), blank=False,editable=True)
     obj_type = models.ManyToManyField(ObjectType)
-         
+    filter = FILTER_Field(_(u'Filter'), null=True, blank=True ,editable=True)
+    def natural_key(self):
+        return self.name    
   
     def __unicode__(self):              # __unicode__ on Python 2
-        return '.'.join( (self.content_type.app_label, self.content_type.model, self.id_attr )) + ' -> ' + '/'.join((self.target_uri_expr,'{' + self.id_attr + '}')) 
+        return self.name 
  
 
 class AttributeMapping(models.Model):
@@ -149,6 +194,7 @@ class AttributeMapping(models.Model):
     """
     scope = models.ForeignKey(ObjectMapping)
     attr = EXPR_Field(_(u'source attribute'),blank=False,editable=True)
+    filter = FILTER_Field(_(u'Filter'), null=True, blank=True,editable=True)
     predicate = CURIE_Field(_(u'predicate'),blank=False,editable=True)
     is_resource = models.BooleanField(_(u'as URI'))
     
