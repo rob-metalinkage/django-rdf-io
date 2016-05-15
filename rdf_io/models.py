@@ -16,7 +16,7 @@ def getattr_path(obj,path) :
         
     except ValueError as e:
         import traceback
-        import pdb; pdb.set_trace()
+#        import pdb; pdb.set_trace()
         raise ValueError("Failed to map '{}' on '{}' (cause {})".format(path, obj, e))
 def _apply_filter(val, filter) :
     return True
@@ -26,6 +26,7 @@ def _getattr_related(obj, fields):
         get an attribute - if multi-valued will be a list object!
         fields may include filters.  
     """
+    # print obj, fields
     if not len(fields):
         return [obj]
         
@@ -68,7 +69,8 @@ def _getattr_related(obj, fields):
                 break
     
     try:
-        return itertools.chain(*(_getattr_related(xx, fields) for xx in a.all()))
+        # slice the list fo fields[:] to force a copy so each iteration starts from top of list in spite of pop()
+        return itertools.chain(*(_getattr_related(xx, fields[:]) for xx in a.all()))
 #        !list(itertools.chain(*([[1],[2]])))
     except:
         return _getattr_related(a, fields)
