@@ -1,6 +1,16 @@
 from .models import *
 from django.contrib import admin
 
+class GenericMetaPropInline(admin.TabularInline):
+    model = GenericMetaProp
+    # readonly_fields = ('slug','created')
+    #fields = ('code','namespace')
+    # related_search_fields = {'label' : ('name','slug')}
+    extra=1 
+    
+
+class GenericMetaPropAdmin(admin.ModelAdmin):
+    pass
 
 class ObjectTypeAdmin(admin.ModelAdmin):
     pass
@@ -30,7 +40,7 @@ class NamespaceAdmin(admin.ModelAdmin):
 
     
 admin.site.register(Namespace, NamespaceAdmin)  
-    
+admin.site.register(GenericMetaProp,GenericMetaPropAdmin)
 admin.site.register(ObjectType, ObjectTypeAdmin)
 admin.site.register(ObjectMapping, ObjectMappingAdmin)
 admin.site.register(AttributeMapping, AttributeMappingAdmin)

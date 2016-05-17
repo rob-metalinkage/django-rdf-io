@@ -117,5 +117,23 @@
 			"label" : "OWL Ontology"
 		}
 	}
+	, {
+		"pk" : null,
+		"model" : "rdf_io.genericmetaprop",
+		"fields" : {
+			"namespace" : ["http://purl.org/dc/terms/" ],
+			"propname" : "rights",
+			"definition" : "Information about rights held in and over the resource."
+		}
+	}
+	, {
+		"pk" : null,
+		"model" : "rdf_io.genericmetaprop",
+		"fields" : {
+			"namespace" : ["http://purl.org/dc/terms/" ],
+			"propname" : "source",
+			"definition" : "A related resource from which the described resource is derived."
+		}
+	}
 ]
 

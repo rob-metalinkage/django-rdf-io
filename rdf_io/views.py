@@ -79,7 +79,12 @@ def build_rdf( gr,obj, oml ) :
             uribase = om.target_uri_expr[1:-1]
         else:
             uribase = getattr_path(obj,om.target_uri_expr)[0]
-        if uribase[-1] == '/' or uribase[-1] == '#' :
+            
+        # strip uri base if present in tgt_id
+        tgt_id = tgt_id.replace(uribase,"")
+        if not tgt_id:
+            uri = uribase
+        elif uribase[-1] == '/' or uribase[-1] == '#' :
             uri = "".join((uribase,tgt_id))
         else :
             uri = "/".join((uribase,tgt_id))

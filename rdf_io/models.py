@@ -148,6 +148,29 @@ class Namespace(models.Model) :
     def __unicode__(self):
         return self.uri    
 
+class GenericMetaPropManager(models.Manager):
+    def get_by_natural_key(self, curie):
+        try:
+            (namespace,prop) = curie.split(":")
+        except:
+            pass
+        return self.get(namespace__prefix=namespace, propname=prop)
+        
+class GenericMetaProp(models.Model) :
+    """
+        a metadata property that can be attached to any target model to provide extensible metadata.
+        Works with the namespace object to allow short forms of metadata to be displayed
+    """
+    objects = GenericMetaPropManager()
+    namespace = models.ForeignKey(Namespace,verbose_name=_(u'namespace'))
+    propname =  models.CharField(_(u'name'),blank=False,max_length=250,editable=True)
+    definition  = models.TextField(_(u'definition'), blank=True)
+    def natural_key(self):
+        return ":".join((self.namespace.prefix,self.propname))
+    def __unicode__(self):              # __unicode__ on Python 2
+        return self.natural_key() 
+ 
+        
 class ObjectTypeManager(models.Manager):
     def get_by_natural_key(self, uri):
         return self.get(uri=uri)
