@@ -18,8 +18,15 @@ def getattr_path(obj,path) :
         import traceback
 #        import pdb; pdb.set_trace()
         raise ValueError("Failed to map '{}' on '{}' (cause {})".format(path, obj, e))
+        
 def _apply_filter(val, filter) :
-    return True
+    """
+        Apply a simple filter to a specific property, with a list of possible values
+    """
+    for targetvel in filter.replace(" OR ",",").split(",") :
+        if val == targetvel :
+            return True
+    return False
     
 def _getattr_related(obj, fields):
     """
@@ -31,7 +38,7 @@ def _getattr_related(obj, fields):
         return [obj]
         
     field = fields.pop(0)
-    
+    filter = None
     # try to get - then check for django 1.7+ manager for related field
     try:
         # check for lang 
@@ -47,11 +54,9 @@ def _getattr_related(obj, fields):
         if "[" in field :
             filter = field[ field.index("[") +1 : -1 ]
             field = field[0:field.index("[")]
-        else:
-            filter = None
-            
+           
         a = getattr(obj, field)
-        if not _apply_filter(a, filter) :
+        if filter and not _apply_filter(a, filter) :
             return []
         if lang:
             a = "@".join((a,lang))
@@ -63,9 +68,13 @@ def _getattr_related(obj, fields):
             raise ValueError("Could not locate attribute or related model '{}' in element '{}'".format(field, type(obj)) )
         # id django 1.7+ we could just use field_set to get a manager :-(
         claz = reltype.model_class()
+        import pdb; pdb.set_trace()
         for prop,val in claz.__dict__.items() :
             if type(val) is ReverseSingleRelatedObjectDescriptor and val.field.related.model == claz :
-                a = claz.objects.filter(**{prop : obj})
+                filters = {prop : obj}
+                if filter :
+                    filters.update(dict( [fc.split("=") for fc in filter.replace(" AND ",",").split(",")]))
+                a = claz.objects.filter(**filters)
                 break
     
     try:
