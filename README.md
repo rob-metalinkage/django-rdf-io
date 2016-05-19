@@ -28,7 +28,7 @@ source model elements may be defined using XPath-like syntax, with nesting using
 
 path = (literal|element([./]element)*)
 
-literal = "a quoted string" or <a 
+literal = "a quoted string" | 'a quoted string' | <a URI>  
 
 element = (property|related_model_expr)([filter])?
 
@@ -36,9 +36,16 @@ property = a valid name of a property of a django model
 
 related_model_expr = model_name({property})? 
 
-Notes:
-* filters on related models will be evaluated within the database using django style filters, filters on property values will be performed during serialisation.
+filter = (field=literal)((,| AND )field=literal)* | literal((,| OR )literal)*
 
+Notes:
+* filters on related models will be evaluated within the database using django filters, filters on property values will be performed during serialisation.
+
+* filters on properties are a simple list of possible matches (, is the same as " OR " ) and apply to the element of the path 
+  person.title['MRS','MISS','MS']  would match any title with value "MRS", "MISS", "MS"
+
+* filters on related objects are property=value syntax. Properties use django-stlye paths - i.e. notation.namespace.prefix=skos
+ 
 ## Status: initial capability provides for TTL serialisation of a given model (for which a mapping has been registered) 
 
 ## API
@@ -58,6 +65,12 @@ gr.serialize(format="turtle")
 
 {SERVER_URL}/rdf_io/to_rdf/{model_name}/{model_id}
 
+### Configuring an external 3-store
+
+## Marmotta LDP
+deploy marmotta.war
+create marmotta user on database
+create jdbc config
 
 
 # Design Goals

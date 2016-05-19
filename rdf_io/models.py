@@ -18,13 +18,23 @@ def getattr_path(obj,path) :
         import traceback
 #        import pdb; pdb.set_trace()
         raise ValueError("Failed to map '{}' on '{}' (cause {})".format(path, obj, e))
-        
+ 
+def dequote(s):
+    """
+    If a string has single or double quotes around it, remove them.
+    Make sure the pair of quotes match.
+    If a matching pair of quotes is not found, return the string unchanged.
+    """
+    if  s.startswith(("'", '"', '<')):
+        return s[1:-1]
+    return s
+    
 def _apply_filter(val, filter) :
     """
         Apply a simple filter to a specific property, with a list of possible values
     """
     for targetvel in filter.replace(" OR ",",").split(",") :
-        if val == targetvel :
+        if val == dequote(targetvel) :
             return True
     return False
     
@@ -68,12 +78,20 @@ def _getattr_related(obj, fields):
             raise ValueError("Could not locate attribute or related model '{}' in element '{}'".format(field, type(obj)) )
         # id django 1.7+ we could just use field_set to get a manager :-(
         claz = reltype.model_class()
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         for prop,val in claz.__dict__.items() :
             if type(val) is ReverseSingleRelatedObjectDescriptor and val.field.related.model == claz :
                 filters = {prop : obj}
                 if filter :
-                    filters.update(dict( [fc.split("=") for fc in filter.replace(" AND ",",").split(",")]))
+                    filterclauses = dict( [fc.split("=") for fc in filter.replace(" AND ",",").split(",")])
+                    for fc in filterclauses :
+                        if filterclauses[fc].startswith(("'", '"', '<')) :
+                            filterclauses[fc] = dequote(filterclauses[fc])
+                        elif not filterclauses[fc].isnumeric() :
+                            # look for a value
+                            filterclauses[fc] = getattr(ob, filterclauses[fc])
+                    filters.update(filterclauses)
+                
                 a = claz.objects.filter(**filters)
                 break
     
