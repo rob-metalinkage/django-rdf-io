@@ -34,7 +34,7 @@ element = (property|related_model_expr)([filter])?
 
 property = a valid name of a property of a django model 
 
-related_model_expr = model_name({property})? 
+related_model_expr = model_name(\({property}\))? 
 
 filter = (field=literal)((,| AND )field=literal)* | literal((,| OR )literal)*
 
@@ -45,6 +45,9 @@ Notes:
   person.title['MRS','MISS','MS']  would match any title with value "MRS", "MISS", "MS"
 
 * filters on related objects are property=value syntax. Properties use django-stlye paths - i.e. notation.namespace.prefix=skos
+
+* if a ManyToMany field is used through an intermediary, then use the related_model_expr - and if this is a self-relation then specify the property : eg.
+semrelation(origin_concept)[rel_type='1'].target_concept
  
 ## Status: initial capability provides for TTL serialisation of a given model (for which a mapping has been registered) 
 

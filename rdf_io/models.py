@@ -43,7 +43,7 @@ def _getattr_related(obj, fields):
         get an attribute - if multi-valued will be a list object!
         fields may include filters.  
     """
-    # print obj, fields
+    print obj, fields
     if not len(fields):
         return [obj]
         
@@ -66,12 +66,23 @@ def _getattr_related(obj, fields):
             field = field[0:field.index("[")]
            
         a = getattr(obj, field)
+        # import pdb; pdb.set_trace()
+        try:
+            # slice the list for fields[:] to force a copy so each iteration starts from top of list in spite of pop()
+            return itertools.chain(*(_getattr_related(xx, fields[:]) for xx in a.all()))
+        except:
+            pass
         if filter and not _apply_filter(a, filter) :
             return []
         if lang:
             a = "@".join((a,lang))
     except AttributeError:
-        # then try to find objects of this type with a foreign key
+        # then try to find objects of this type with a foreign key property using either (name) supplied or target object type
+        if field.endswith(")") :
+            (field, relprop ) = str(field[0:-1]).split("(")
+        else :
+            relprop = None
+            
         try:
             reltype = ContentType.objects.get(model=field)
         except ContentType.DoesNotExist as e :
@@ -80,7 +91,11 @@ def _getattr_related(obj, fields):
         claz = reltype.model_class()
         # import pdb; pdb.set_trace()
         for prop,val in claz.__dict__.items() :
-            if type(val) is ReverseSingleRelatedObjectDescriptor and val.field.related.model == claz :
+            # skip related property names if set
+           
+            if relprop and prop != relprop :
+                continue
+            if relprop or type(val) is ReverseSingleRelatedObjectDescriptor and val.field.related.model == claz :
                 filters = {prop : obj}
                 if filter :
                     filterclauses = dict( [fc.split("=") for fc in filter.replace(" AND ",",").split(",")])
@@ -94,7 +109,7 @@ def _getattr_related(obj, fields):
                 
                 a = claz.objects.filter(**filters)
                 break
-    
+    # will still throw an exception if a is not set!     
     try:
         # slice the list fo fields[:] to force a copy so each iteration starts from top of list in spite of pop()
         return itertools.chain(*(_getattr_related(xx, fields[:]) for xx in a.all()))
