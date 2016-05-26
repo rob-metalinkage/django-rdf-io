@@ -49,7 +49,20 @@ Notes:
 * if a ManyToMany field is used through an intermediary, then use the related_model_expr - and if this is a self-relation then specify the property : eg.
 semrelation(origin_concept)[rel_type='1'].target_concept
  
-## Status: initial capability provides for TTL serialisation of a given model (for which a mapping has been registered) 
+## Status: 
+alpha, functionally complete initial capability:
+* TTL serialisation of a given model (for which a mapping has been registered) 
+* Publishing to remote LDP service using per-model templates to define LDP resources
+* Autoconfiguring of signals so that objects with mappings are published on post_ save
+* syc_remote method to push all objects of list of model types (push is idempotent - safe to repeat)
+* sophisticated property-chains with per-level filter options in attribute marmotta
+* tested in context of geonode project under django 1.6
+
+todo:
+* implement global filters for object mappings (to limit mappings to a subset)
+* set up signals and methods to delete objects from remote store
+* make settings more sophisticated so default target resource patterns can be inherited from app models
+* test against django 1.7+
 
 ## API
 
@@ -71,9 +84,37 @@ gr.serialize(format="turtle")
 ### Configuring an external 3-store
 
 ## Marmotta LDP
-deploy marmotta.war
-create marmotta user on database
-create jdbc config
+* deploy marmotta.war and configure as per Marmotta instructions
+* define resource container patterns for different models
+
+e.g.
+
+`# RDF triplestore settings
+RDFSTORE = { 
+    'default' : {
+        'server' : "".join((SITEURL,":8080/marmotta" )),
+        'target' : "/ldp/{model}/{id}",
+        },
+    'scheme' : {
+        'target' : "/ldp/voc/{slug}",
+        },
+    'concept' : {
+        'target' : "/ldp/voc/{scheme__slug}/{term}",
+#        'headers' : { 'Slug' : "{term}" }
+        }
+}        
+`   
+
+* create containers necessary for patterns (eg /ldp/voc) in the example above
+* deploy reasoning rules for target models (to generate additional statements that can be inferred from the published data - this is where the power comes in)
+
+### Operations
+
+RDF-IO is triggered automatically when saving an object once an ObjectMapping is defined for that object type.
+
+A bulk load to the RDF store can be achieved with /rdf_io/sync_remote/{model}(,{model})*
+
+Note that containers need to be create in the right order - so for the SKOS example  this must be /rdf_io/sync_remote/scheme,concept
 
 
 # Design Goals
@@ -93,6 +134,4 @@ I suspect that this may all be a fairly common pattern - but I've only seen far 
 
 default RDF serialisations are handled by loading initial_data fixtures. RDF_IO objects are defined using natural keys to allow default mappings for modules to be loaded in any order. It may be more elegant to use settings so these defaults can be customised more easily.
 
-Open questions:
-* Should i use signals to trigger the serialisation - and if so where do I set up the signals - i'd like the code to be contained in the serializer-help app
-* What have I missed or got horribly wrong?
+Signals are registered when an ObjectMapping is defined for a model. 

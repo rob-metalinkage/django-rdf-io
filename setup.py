@@ -8,7 +8,7 @@ except ImportError:
     ez_setup.use_setuptools()
     from setuptools import setup, find_packages
 
-VERSION = '.'.join(str(i) for i in __import__('rdf_io').__version__)
+VERSION = '0.1'
 
 import os
 def read(fname):
