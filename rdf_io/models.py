@@ -43,7 +43,7 @@ def _getattr_related(obj, fields):
         get an attribute - if multi-valued will be a list object!
         fields may include filters.  
     """
-    print obj, fields
+    # print obj, fields
     if not len(fields):
         return [obj]
         
@@ -261,7 +261,7 @@ class AttributeMapping(models.Model):
     """
     scope = models.ForeignKey(ObjectMapping)
     attr = EXPR_Field(_(u'source attribute'),blank=False,editable=True)
-    filter = FILTER_Field(_(u'Filter'), null=True, blank=True,editable=True)
+    # filter = FILTER_Field(_(u'Filter'), null=True, blank=True,editable=True)
     predicate = CURIE_Field(_(u'predicate'),blank=False,editable=True)
     is_resource = models.BooleanField(_(u'as URI'))
     
