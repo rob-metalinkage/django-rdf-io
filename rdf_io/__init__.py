@@ -29,6 +29,9 @@ def setup_signals( **kwargs) :
     
  
 signals.post_save.connect(setup_signals, sender=ObjectMapping)
-for om in ObjectMapping.objects.all() :
-    signals.post_save.send(ObjectMapping, instance=om )
-    
+try: 
+    for om in ObjectMapping.objects.all() :
+        signals.post_save.send(ObjectMapping, instance=om )
+except :
+    logger.info(
+            "Not able to access ObjectMappings - need to run syncdb")
