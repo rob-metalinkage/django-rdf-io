@@ -107,6 +107,9 @@ RDFSTORE = {
 
 * create containers necessary for patterns (eg /ldp/voc) in the example above
 * deploy reasoning rules for target models (to generate additional statements that can be inferred from the published data - this is where the power comes in)
+ - see http://eagle-dev.salzburgresearch.at/reasoner/admin/about.html
+ e.g.
+ curl -i -H "Content-Type: text/plain" -X POST --data-binary @fixtures/skos.kwrl http://localhost:8080/marmotta/reasoner/program/skos.kwrl
 
 ### Operations
 

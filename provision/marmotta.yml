@@ -1,0 +1,55 @@
+---
+# YAML script for provisioning a local Marmotta instance
+#
+# this is untested - recording setup steps 
+
+- name: install java8
+  apt_repository: repo='ppa:openjdk-r/ppa'
+
+- name: Install Marmotta Dependencies
+  apt: name={{item}} state=present update_cache=yes cache_valid_time=3600
+  with_items:
+    - {{ tomcat_version }}
+    # needed if we're not pulling in tomcat
+    - openjdk-8-jdk
+  tags: [install]
+
+- file: path=/tmp/{{ application_name }} state=directory
+  tags: [ldp]
+
+- name: fetch geoserver
+  get_url: url={{ marmotta_download }} dest=/var/lib/{{ tomcat_version }}/webapps/marmotta.war
+  tags: [ldp]
+
+- name: update geoserver perms
+  file: path=/var/lib/{{ tomcat_version }}/webapps/geoserver.war state=file owner={{ tomcat_version }} group={{ tomcat_version }}
+  notify: restart geoserver
+
+#
+- stat: path=/var/lib/{{ tomcat_version }}/webapps/geoserver/WEB-INF/lib/postgresql-9.4-1201-jdbc41.jar
+  register: postgresql_source
+  tags: [postgres]
+
+- stat: path=/usr/share/{{ tomcat_version }}/lib/postgresql-9.4-1201-jdbc41.jar
+  register: postgresql_target
+  tags: [postgres]
+
+- name: move postgresql-9.4-1201-jdbc41.jar
+  command: mv [postgresql_source - need YAML syntax for this!!] [postgresql_target]
+  sudo: yes
+  when: postgresql_source.stat.exists and not postgresql_target.stat.exists
+  tags: [postgres]
+
+  
+- name: restart tomcat
+  service: name={{ tomcat_version }} state=restarted
+  tags: [marmotta]
+
+- wait_for: path=/var/lib/{{ tomcat_version }}/webapps/marmotta/WEB-INF/
+
+## set up marmotta user and jdbc config
+
+## sudo -u postgres createuser -P marmotta
+edit /tmp/marmotta/system-config.properties
+  add security.enabled = true
+  set database.url and database username password/
