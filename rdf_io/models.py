@@ -37,6 +37,34 @@ def _apply_filter(val, filter) :
         if val == dequote(targetvel) :
             return True
     return False
+
+def apply_pathfilter(obj, filter_expr ):
+    """
+        apply a filter based on a list of path expressions  path1=a,b AND path2=c,db
+    """
+    and_clauses = filter_expr.split(" AND ")
+    for clause in and_clauses:
+        (path,vallist) = clause.split("=")
+        or_vals = vallist.split(",")
+        # if multiple values - only one needs to match
+        matched = False
+        for val in getattr_path(obj,path):
+            for match in or_vals :
+                if type(val) == bool :
+                    matched = val == (match == 'True')
+                    break;
+                else :
+                    if val == match :
+                        matched = True
+                        break
+            if matched :
+                # dont need to check any mor - continue with the AND loop
+                break
+        # did any value match?
+        if not matched :
+            return False
+            
+    return True
     
 def _getattr_related(obj, fields):
     """
