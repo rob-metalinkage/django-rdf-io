@@ -86,13 +86,26 @@ def _getattr_related(obj, fields):
                 lang = langfield[1:-1]
             else:
                 lang = _getattr_related(obj, [langfield,] + fields).pop(0)
+                fields = []
         except:
             lang = None
+        # check for datatype ^^type
+        try:
+            (field,typefield) = field.split('^^')
+            if typefield[0] in ["'" , '"'] :
+                typeuri = typefield[1:-1]
+            else:
+                typeuri = _getattr_related(obj, [typefield,] + fields).pop(0)
+                #have reached end of chain and have used up field list after we hit ^^
+                fields = []
+        except:
+            typeuri = None
+        # check for filt
         # check for filter 
         if "[" in field :
             filter = field[ field.index("[") +1 : -1 ]
             field = field[0:field.index("[")]
-           
+        
         a = getattr(obj, field)
         # import pdb; pdb.set_trace()
         try:
@@ -104,6 +117,8 @@ def _getattr_related(obj, fields):
             return []
         if lang:
             a = "@".join((a,lang))
+        elif typeuri :
+            a = "^^".join((a,typeuri))
     except AttributeError:
         # then try to find objects of this type with a foreign key property using either (name) supplied or target object type
         if field.endswith(")") :

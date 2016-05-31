@@ -203,7 +203,16 @@ def build_rdf( gr,obj, oml, includemembers ) :
                     if am.is_resource :
                         object = _as_resource(gr,value)
                     else:
-                        object = Literal(value) 
+                        try :
+                            (value,valtype) = value.split("^^")
+                            object = Literal(value,datatype=valtype)
+                        except:
+                            try :
+                                (value,valtype) = value.split("@")
+                                object = Literal(value,lang=valtype)
+                            except:
+                                object = Literal(value)
+                            
                     gr.add( (subject, _as_resource(gr,am.predicate) , object) )
             
     
