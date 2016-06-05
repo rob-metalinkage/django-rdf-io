@@ -110,7 +110,9 @@ RDFSTORE = {
  - see http://eagle-dev.salzburgresearch.at/reasoner/admin/about.html
  e.g.
  curl -i -H "Content-Type: text/plain" -X POST --data-binary @fixtures/skos.kwrl http://localhost:8080/marmotta/reasoner/program/skos.kwrl
-
+ curl -i -X GET http://localhost:8080/marmotta/reasoner/program/skos.kwrl
+ curl -i -X GET 
+ curl -i -H "Content-Type: text/plain" -X POST --data-binary @skos.skwrl http://localhost:8080/marmotta/reasoner/program/skos.skwrl
 ### Operations
 
 RDF-IO is triggered automatically when saving an object once an ObjectMapping is defined for that object type.

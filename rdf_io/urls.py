@@ -10,5 +10,5 @@ urlpatterns = patterns('',
     url(r'to_rdf/(?P<model>[^\/]+)/(?P<id>\d+)$', to_rdf, name='to_rdf'),
     url(r'pub_rdf/(?P<model>[^\/]+)/(?P<id>\d+)$', pub_rdf, name='pub_rdf'),
     url(r'sync_remote/(?P<models>[^\/]+)$', sync_remote, name='sync_remote'),
-    url(r'^admin/', include(admin.site.urls)),
+    # url(r'^admin/', include(admin.site.urls)),
 )

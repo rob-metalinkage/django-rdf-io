@@ -31,5 +31,5 @@ try:
     for om in ObjectMapping.objects.all() :
         signals.post_save.send(ObjectMapping, instance=om )
 except Exception as e:
-    logger.info(
+    logger.error(
             "Not able to access ObjectMappings - need to run syncdb? {}".format(e))

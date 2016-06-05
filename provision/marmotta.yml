@@ -17,15 +17,11 @@
 - file: path=/tmp/{{ application_name }} state=directory
   tags: [ldp]
 
-- name: fetch geoserver
+- name: fetch marmotta
   get_url: url={{ marmotta_download }} dest=/var/lib/{{ tomcat_version }}/webapps/marmotta.war
   tags: [ldp]
 
-- name: update geoserver perms
-  file: path=/var/lib/{{ tomcat_version }}/webapps/geoserver.war state=file owner={{ tomcat_version }} group={{ tomcat_version }}
-  notify: restart geoserver
 
-#
 - stat: path=/var/lib/{{ tomcat_version }}/webapps/geoserver/WEB-INF/lib/postgresql-9.4-1201-jdbc41.jar
   register: postgresql_source
   tags: [postgres]
@@ -52,4 +48,10 @@
 ## sudo -u postgres createuser -P marmotta
 edit /tmp/marmotta/system-config.properties
   add security.enabled = true
-  set database.url and database username password/
+ - if use postgres  set database.url and database username password/
+  
+ run syncdb - set DJANGO_SETTINGS_ and create a manage.py above geonode installed path - all a massive pain.
+
+add voc container to marmotta:
+ curl -i -X POST -d @../django-skosxl/skosxl/fixtures/voc_ldp_container.ttl -H "Content-Type: text/turtle" -H "Slug: voc" http://192.168.56.151:8080/marmotta/ldp
+  
