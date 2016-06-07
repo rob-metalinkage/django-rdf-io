@@ -99,6 +99,7 @@ def publish(obj, model, oml ):
     # now get the remote store mappings 
     try:
         rdfstore = settings.RDFSTORE['default']
+        auth = rdfstore.get('auth')
         server = rdfstore['server']
     except:
         raise HttpResponse("RDF store not configured", status=410 )
@@ -107,6 +108,7 @@ def publish(obj, model, oml ):
         rdfstore = settings.RDFSTORE[model]
         if not rdfstore.has_key('server') :
             rdfstore['server'] = server
+            rdfstore['auth'] = auth
     except:
         pass  # use default then
  
@@ -133,11 +135,12 @@ def publish(obj, model, oml ):
         headers[h] = _resolveTemplate( rdfstore['headers'][h], model, obj )
     
     
-    result = requests.put( resttgt, headers=headers , data=gr.serialize(format="turtle"))
-    logger.debug ( "Updating resource {} {}".format(resttgt,result.status_code) )
-#    if result.status_code == 428 :
+    result = requests.put( resttgt, headers=headers , data=gr.serialize(format="turtle"), auth=rdfstore.get('auth'))
+    logger.info ( "Updating resource {} {}".format(resttgt,result.status_code) )
+    if result.status_code > 400 :
 #         print "Posting new resource"
 #         result = requests.post( resttgt, headers=headers , data=gr.serialize(format="turtle"))
+        logger.error ( "Failed to publish resource {} {}".format(resttgt,result.status_code) )
 
     return result 
 
