@@ -46,12 +46,25 @@
 ## set up marmotta user and jdbc config
 
 ## sudo -u postgres createuser -P marmotta
+
+send something to marmotta as its very first web access to set its hostname!
+http://resources.opengeospatial.org/
+
+curl -X POST -u admin:pass123 -d '["standard"]' http://localhost:8080/marmotta/config/data/security.profile
+curl -iX POST -H "Content-Type: application/json" -d '["standard"]' http://localhost:8080/marmotta/config/data/security.profile
 edit /tmp/marmotta/system-config.properties
   add security.enabled = true
  - if use postgres  set database.url and database username password/
   
  run syncdb - set DJANGO_SETTINGS_ and create a manage.py above geonode installed path - all a massive pain.
 
-add voc container to marmotta:
- curl -i -X POST -d @../django-skosxl/skosxl/fixtures/voc_ldp_container.ttl -H "Content-Type: text/turtle" -H "Slug: voc" http://192.168.56.151:8080/marmotta/ldp
+ http://resources.opengeospatial.org/
+
+ 
+ add voc container to marmotta:
+ curl -i -X POST -d @../django-skosxl/skosxl/fixtures/voc_ldp_container.ttl -H "Content-Type: text/turtle" -H "Slug: voc" http://resources.opengeospatial.org:8080/marmotta/ldp
+ cd {project}/../django-skosxl/skosxl/fixtures
+  curl -i -X POST -u admin:xxx -d @voc_ldp_container.ttl -H "Content-Type: text/turtle" -H "Slug: voc" http://resources.opengeospatial.org:8080/marmotta/ldp
+register rules
+curl -i -u admin:xxx -H "Content-Type: text/plain" -X POST --data-binary @skos.kwrl http://localhost:8080/marmotta/reasoner/program/skos.kwrl
   
