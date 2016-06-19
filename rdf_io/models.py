@@ -159,16 +159,26 @@ def _getattr_related(obj, fields):
 #        !list(itertools.chain(*([[1],[2]])))
     except:
         return _getattr_related(a, fields)
-        
+
+def expand_curie(value):
+    try:
+        parts = value.split(":")
+        if len(parts) == 2 :
+            ns = Namespace.objects.get(prefix=parts[0])
+            return "".join((ns.uri,parts[1]))
+    except:
+        pass
+    return value
+    
 def validate_urisyntax(value):
 
     if value[0:4] == 'http' :
         URLValidator(verify_exists=False).__call__(value)
     else :
-        parts = value.split(str=":")
+        parts = value.split(":")
         if len(parts) != 2 :
             raise ValidationError('invalid syntax')
-        ns = Namespace.objects.get(prefix=part[0])
+        ns = Namespace.objects.get(prefix=parts[0])
     
 class CURIE_Field(models.CharField):
     """

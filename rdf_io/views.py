@@ -1,6 +1,6 @@
 # # -*- coding:utf-8 -*-
 from django.shortcuts import render_to_response, redirect
-from .models import ObjectMapping,Namespace,AttributeMapping, ObjectType, getattr_path, apply_pathfilter
+from .models import ObjectMapping,Namespace,AttributeMapping, ObjectType, getattr_path, apply_pathfilter, expand_curie
 from django.template import RequestContext
 from django.contrib.contenttypes.models import ContentType
 from django.conf import settings
@@ -48,25 +48,45 @@ def _as_resource(gr,curie) :
         raise ValueError("prefix " + ns + "not recognised")
  
  
-def to_rdf(request,model,id):
+def to_rdfbykey(request,model,key):
     """
         take a model name + object id reference to an instance and apply any RDF serialisers defined for this
     """
+    try: 
+        return _tordf(request,model,None,key)
+    except Exception as e: 
+        return HttpResponse("Model not serialisable to RDF: %s" % e, status=500)
+ 
+def to_rdfbyid(request,model,id):
+    """
+        take a model name + object id reference to an instance and apply any RDF serialisers defined for this
+    """
+    try: 
+        return _tordf(request,model,id,None)
+    except Exception as e: 
+        return HttpResponse("Model not serialisable to RDF: %s" % e, status=500)
+
+def _tordf(request,model,id,key):
+    if request.GET.get('pdb') :
+        import pdb; pdb.set_trace()
     # find the model type referenced
     ct = ContentType.objects.get(model=model)
     if not ct :
         raise Http404("No such model found")
     oml = ObjectMapping.objects.filter(content_type=ct)
     if not oml :
-        raise HttpResponse("Model not serialisable to RDF", status=410 )
-        
-    obj = get_object_or_404(ct.model_class(), pk=id)
+        return HttpResponse("Model not serialisable to RDF", status=410 )
+    if id :    
+        obj = get_object_or_404(ct.model_class(), pk=id)
+    else :
+        obj = ct.model_class().objects.get_by_natural_key(key)
+    
     # ok so object exists and is mappable, better get down to it..
  
     includemembers = False
     
     gr = Graph()
-    import pdb; pdb.set_trace()
+#    import pdb; pdb.set_trace()
 #    ns_mgr = NamespaceManager(Graph())
 #    gr.namespace_manager = ns_mgr
     try:
@@ -81,6 +101,8 @@ def pub_rdf(request,model,id):
     """
         take a model name + object id reference to an instance serialise and push to the configured triplestore
     """
+    if request.GET.get('pdb') :
+        import pdb; pdb.set_trace()
     # find the model type referenced
     ct = ContentType.objects.get(model=model)
     if not ct :
@@ -102,7 +124,7 @@ def publish(obj, model, oml ):
         auth = rdfstore.get('auth')
         server = rdfstore['server']
     except:
-        raise HttpResponse("RDF store not configured", status=410 )
+        return  HttpResponse("RDF store not configured", status=410 )
         
     try:
         rdfstore = settings.RDFSTORE[model]
@@ -119,7 +141,7 @@ def publish(obj, model, oml ):
     try:
         (obj_uri,gr) = build_rdf(gr, obj, oml, False)
     except Exception as e:
-        return HttpResponse("Error during serialisation: " + str(e) , status=500 )
+        return  HttpResponse("Error during serialisation: " + str(e) , status=500 )
     for ns in _nslist.keys() :
         gr.namespace_manager.bind( str(ns), namespace.Namespace(str(_nslist[ns])), override=False)
     
@@ -141,7 +163,7 @@ def publish(obj, model, oml ):
 #         print "Posting new resource"
 #         result = requests.post( resttgt, headers=headers , data=gr.serialize(format="turtle"))
         logger.error ( "Failed to publish resource {} {}".format(resttgt,result.status_code) )
-
+        return HttpResponse ("Failed to publish resource {} {}".format(resttgt,result.status_code) , status = result.status_code )
     return result 
 
 def _get_etag(uri):
@@ -156,8 +178,12 @@ def _resolveTemplate(template, model, obj) :
     
     vals = { 'model' : model }
     for (literal,param,repval,conv) in Formatter().parse(template) :
-        if param :
-            vals[param] = getattr_path(obj,param).pop()
+        if param and param != 'model' :
+            try:
+                vals[param] = getattr_path(obj,param).pop()
+            except:
+                if param == 'slug'  :
+                    vals[param] = obj.id
     
     return template.format(**vals)
  
@@ -179,8 +205,11 @@ def build_rdf( gr,obj, oml, includemembers ) :
         else:
             uribase = getattr_path(obj,om.target_uri_expr)[0]
             
-        # strip uri base if present in tgt_id
         tgt_id = tgt_id.replace(uribase,"")
+        # strip uri base if present in tgt_id
+        uribase = expand_curie(uribase)
+        
+ 
         if not tgt_id:
             uri = uribase
         elif uribase[-1] == '/' or uribase[-1] == '#' :
@@ -203,6 +232,8 @@ def build_rdf( gr,obj, oml, includemembers ) :
             else :
                 values = getattr_path(obj,am.attr)
                 for value in values :
+                    if not value :
+                        continue
                     if am.is_resource :
                         object = _as_resource(gr,value)
                     else:
@@ -225,6 +256,9 @@ def sync_remote(request,models):
     """
         Synchronises the RDF published output for the models, in the order listed (list containers before members!)
     """
+    if request.GET.get('pdb') :
+        import pdb; pdb.set_trace()
+ 
     for modelname in models.split(",") :
          do_sync_remote( modelname )
     return HttpResponse("sync successful for {}".format(models), status=200)
