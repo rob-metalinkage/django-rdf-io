@@ -7,25 +7,34 @@ RDF_IO has initial data that loads up common W3C namespaces and prefixes ready f
 
 ## installation
 
-get a working copy with 
+get a working copy with
+```
 git clone https://github.com/rob-metalinkage/django-rdf-io
 pip install -e (where you put it)
-
+```
 in your master django project:
 * add 'rdf_io' to the INSTALLED_APPS  in settings.py
-* add     url(r"^rdf_io/", include('rdf_io.urls')) to urls.py
+* add    ` url(r"^rdf_io/", include('rdf_io.urls'))`  to urls.py
 
 ## Usage
 	1) Define mappings for your target models using the admin interface $SERVER/admin/rdf_io
-	2) To create an online resource use $SERVER/rdf_io/to_rdf/concept/2
+	2) To create an online resource use 
+		`{SERVER_URL}/rdf_io/to_rdf/{model_name}/id/{model_id}`
+		`{SERVER_URL}/rdf_io/to_rdf/{model_name}/key/{model_natural_key}`
+	3) To create and publish to the configured RDF store 
+		`{SERVER_URL}/rdf_io/pub_rdf/{model_name}/{model_id}`
+		(note that this will happen automatically on object save if an object mapping is defined)
+	4) To republish all objects for a set of django models
+		`{SERVER_URL}/rdf_io/sync_model/{model_name}[,{model_name}]*`
+		
 
 ### Mapping syntax
 Mapping is non trivial - because the elements of your model may need to extracted from related models 
 
-mapping is from elements in a Django model to a RDF value (a URI or a literal)
+Mapping is from elements in a Django model to a RDF value (a URI or a literal)
 
 source model elements may be defined using XPath-like syntax, with nesting using django filter style __, a__b .(dot) or / notation, where each element of the path may support an optional filter. 
-`
+```
 path = (literal|element([./]element)*)
 
 literal = "a quoted string" | 'a quoted string' | <a URI>  
@@ -37,7 +46,7 @@ property = a valid name of a property of a django model
 related_model_expr = model_name(\({property}\))? 
 
 filter = (field=literal)((,| AND )field=literal)* | literal((,| OR )literal)*
-`
+```
 Notes:
 * filters on related models will be evaluated within the database using django filters, filters on property values will be performed during serialisation.
 
@@ -67,7 +76,7 @@ todo:
 ## API
 
 ### Serialising within python
-`
+```
 from rdf_io.views import build_rdf
 from django.contrib.contenttypes.models import ContentType
 from rdf_io.models import ObjectMapping
@@ -76,7 +85,7 @@ ct = ContentType.objects.get(model=model)
 obj_mapping_list=ObjectMapping.objects.filter(content_type=ct)
 build_rdf(gr,obj, obj_mapping_list)  returns a rdflib.Graph()
 gr.serialize(format="turtle")
-`
+```
 ### Serialising using django views:
 
 `{SERVER_URL}/rdf_io/to_rdf/{model_name}/{model_id}`
