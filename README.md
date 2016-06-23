@@ -25,7 +25,7 @@ in your master django project:
 		`{SERVER_URL}/rdf_io/pub_rdf/{model_name}/{model_id}`
 		(note that this will happen automatically on object save if an object mapping is defined)
 	4) To republish all objects for a set of django models
-		`{SERVER_URL}/rdf_io/sync_model/{model_name}[,{model_name}]*`
+		`{SERVER_URL}/rdf_io/sync_remote/{model_name}[,{model_name}]*`
 		
 
 ### Mapping syntax
