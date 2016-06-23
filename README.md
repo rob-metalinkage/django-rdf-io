@@ -25,7 +25,7 @@ Mapping is non trivial - because the elements of your model may need to extracte
 mapping is from elements in a Django model to a RDF value (a URI or a literal)
 
 source model elements may be defined using XPath-like syntax, with nesting using django filter style __, a__b .(dot) or / notation, where each element of the path may support an optional filter. 
-
+`
 path = (literal|element([./]element)*)
 
 literal = "a quoted string" | 'a quoted string' | <a URI>  
@@ -37,7 +37,7 @@ property = a valid name of a property of a django model
 related_model_expr = model_name(\({property}\))? 
 
 filter = (field=literal)((,| AND )field=literal)* | literal((,| OR )literal)*
-
+`
 Notes:
 * filters on related models will be evaluated within the database using django filters, filters on property values will be performed during serialisation.
 
@@ -67,7 +67,7 @@ todo:
 ## API
 
 ### Serialising within python
-
+`
 from rdf_io.views import build_rdf
 from django.contrib.contenttypes.models import ContentType
 from rdf_io.models import ObjectMapping
@@ -76,10 +76,10 @@ ct = ContentType.objects.get(model=model)
 obj_mapping_list=ObjectMapping.objects.filter(content_type=ct)
 build_rdf(gr,obj, obj_mapping_list)  returns a rdflib.Graph()
 gr.serialize(format="turtle")
-
+`
 ### Serialising using django views:
 
-{SERVER_URL}/rdf_io/to_rdf/{model_name}/{model_id}
+`{SERVER_URL}/rdf_io/to_rdf/{model_name}/{model_id}`
 
 ### Configuring an external 3-store
 
@@ -89,30 +89,36 @@ gr.serialize(format="turtle")
 
 e.g.
 
-`# RDF triplestore settings
+```
+# RDF triplestore settings
 RDFSTORE = { 
     'default' : {
         'server' : "".join((SITEURL,":8080/marmotta" )),
-        'target' : "/ldp/{model}/{id}",
+        # model and slug are special - slug will revert to id if not present
+        'target' : "/ldp/{model}/{slug}",
+        # this could be pulled from settings
+        'auth' : ('admin', 'pass123')
         },
+    # define special patterns for nested models
     'scheme' : {
         'target' : "/ldp/voc/{slug}",
         },
     'concept' : {
         'target' : "/ldp/voc/{scheme__slug}/{term}",
-#        'headers' : { 'Slug' : "{term}" }
         }
 }        
-`   
+```   
 
 * create containers necessary for patterns (eg /ldp/voc) in the example above
 * deploy reasoning rules for target models (to generate additional statements that can be inferred from the published data - this is where the power comes in)
  - see http://eagle-dev.salzburgresearch.at/reasoner/admin/about.html
  e.g.
+```
  curl -i -H "Content-Type: text/plain" -X POST --data-binary @fixtures/skos.kwrl http://localhost:8080/marmotta/reasoner/program/skos.kwrl
  curl -i -X GET http://localhost:8080/marmotta/reasoner/program/skos.kwrl
  curl -i -X GET 
  curl -i -H "Content-Type: text/plain" -X POST --data-binary @skos.skwrl http://localhost:8080/marmotta/reasoner/program/skos.skwrl
+ ```
 ### Operations
 
 RDF-IO is triggered automatically when saving an object once an ObjectMapping is defined for that object type.
