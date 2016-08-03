@@ -21,15 +21,25 @@ class AttributeMappingInline(admin.TabularInline):
     #fields = ('code','namespace')
     # related_search_fields = {'label' : ('name','slug')}
     extra=1 
+
+class EmbeddedMappingInline(admin.TabularInline):
+    model = EmbeddedMapping
+    # readonly_fields = ('slug','created')
+    #fields = ('code','namespace')
+    # related_search_fields = {'label' : ('name','slug')}
+    extra=1 
     
 class ObjectMappingAdmin(admin.ModelAdmin):
     search_fields = ['content_type__name' ]
-    inlines = [   AttributeMappingInline,]
+    inlines = [   AttributeMappingInline, EmbeddedMappingInline]
     pass
     
 class AttributeMappingAdmin(admin.ModelAdmin):
     pass
 
+        
+class EmbeddedMappingAdmin(admin.ModelAdmin):
+    pass
     
 class NamespaceAdmin(admin.ModelAdmin):
     list_display = ('uri','prefix','notes')
@@ -44,3 +54,4 @@ admin.site.register(GenericMetaProp,GenericMetaPropAdmin)
 admin.site.register(ObjectType, ObjectTypeAdmin)
 admin.site.register(ObjectMapping, ObjectMappingAdmin)
 admin.site.register(AttributeMapping, AttributeMappingAdmin)
+admin.site.register(EmbeddedMapping, EmbeddedMappingAdmin)

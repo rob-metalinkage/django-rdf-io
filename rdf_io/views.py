@@ -1,10 +1,11 @@
 # # -*- coding:utf-8 -*-
 from django.shortcuts import render_to_response, redirect
-from .models import ObjectMapping,Namespace,AttributeMapping, ObjectType, getattr_path, apply_pathfilter, expand_curie
+from .models import ObjectMapping,Namespace,AttributeMapping,EmbeddedMapping, ObjectType, getattr_path, apply_pathfilter, expand_curie
 from django.template import RequestContext
 from django.contrib.contenttypes.models import ContentType
 from django.conf import settings
 from string import Formatter
+from rdflib import BNode
 
 import requests
 
@@ -69,6 +70,9 @@ def to_rdfbyid(request,model,id):
 def _tordf(request,model,id,key):
     if request.GET.get('pdb') :
         import pdb; pdb.set_trace()
+    format = 'json-ld'
+    if request.GET.get('_format') :
+        format = request.GET.get('_format')
     # find the model type referenced
     ct = ContentType.objects.get(model=model)
     if not ct :
@@ -90,12 +94,12 @@ def _tordf(request,model,id,key):
 #    ns_mgr = NamespaceManager(Graph())
 #    gr.namespace_manager = ns_mgr
     try:
-        (obj_uri,gr) = build_rdf(gr, obj, oml, includemembers)
+        gr = build_rdf(gr, obj, oml, includemembers)
     except Exception as e:
         raise Http404("Error during serialisation: " + str(e) )
     for ns in _nslist.keys() :
         gr.namespace_manager.bind( str(ns), namespace.Namespace(str(_nslist[ns])), override=False)
-    return HttpResponse(content_type="text/turtle", content=gr.serialize(format="turtle"))
+    return HttpResponse(content_type="text/turtle", content=gr.serialize(format=format))
 
 def pub_rdf(request,model,id):
     """
@@ -139,7 +143,7 @@ def publish(obj, model, oml ):
 #    ns_mgr = NamespaceManager(Graph())
 #    gr.namespace_manager = ns_mgr
     try:
-        (obj_uri,gr) = build_rdf(gr, obj, oml, False)
+        gr = build_rdf(gr, obj, oml, False)
     except Exception as e:
         return  HttpResponse("Error during serialisation: " + str(e) , status=500 )
     for ns in _nslist.keys() :
@@ -205,7 +209,7 @@ def build_rdf( gr,obj, oml, includemembers ) :
         else:
             uribase = getattr_path(obj,om.target_uri_expr)[0]
             
-        tgt_id = tgt_id.replace(uribase,"")
+        tgt_id = str(tgt_id).replace(uribase,"")
         # strip uri base if present in tgt_id
         uribase = expand_curie(uribase)
         
@@ -224,17 +228,48 @@ def build_rdf( gr,obj, oml, includemembers ) :
   
         # now get all the attribute mappings and add these in
         for am in AttributeMapping.objects.filter(scope=om) :
-            if am.attr[0] in '\'\"' : # the a literal
-                if am.is_resource :
-                    objects = [_as_resource(gr,am.attr),]
+            _add_vals(gr, obj, subject, am.predicate, am.attr , am.is_resource)
+        for em in EmbeddedMapping.objects.filter(scope=om) :
+            try:
+                # three options - scalar value in which case attributes relative to basic obj, a mulitvalue obj or we have to look for related objects
+                valuelist = [obj,]
+                try:
+                    attrvalue = getattr(obj,em.attr)
+                    valuelist = attrvalue.all()
+                except:
+                    # last thing to try - look for related models...
+                    try:
+                        valuelist = getattr(obj, "_".join((em.attr.lower(),'set'))).all()
+                    except:
+                        pass # revert to scalar 
+                    
+                for value in valuelist :
+                    newnode = BNode()
+                    gr.add( (subject, _as_resource(gr,em.predicate) , newnode) )
+                    for element in em.struct.split(";") :
+                        (predicate,expr) = element.split()
+                        if expr.startswith("<") :
+                            is_resource = True
+                            expr = expr[1:-1]
+                        else:
+                            is_resource = False
+                        _add_vals(gr, value, newnode, predicate, expr , is_resource)
+            except:
+                raise ValueError("Could not evaluate express em.struct ")
+        return gr
+
+def _add_vals(gr, obj, subject, predicate, attr, is_resource ) :       
+            if attr[0] in '\'\"' : # the a literal
+                if is_resource :
+                    gr.add( (subject, _as_resource(gr,predicate) , _as_resource(gr,attr) ) )
                 else:
-                    objects = [Literal(am.attr),]
+                    gr.add( (subject, _as_resource(gr,predicate) , Literal(attr) ))
             else :
-                values = getattr_path(obj,am.attr)
+                values = getattr_path(obj,attr)
                 for value in values :
                     if not value :
                         continue
-                    if am.is_resource :
+                    if is_resource :
                         object = _as_resource(gr,value)
                     else:
                         try :
@@ -247,10 +282,7 @@ def build_rdf( gr,obj, oml, includemembers ) :
                             except:
                                 object = Literal(value)
                             
-                    gr.add( (subject, _as_resource(gr,am.predicate) , object) )
-            
-    
-    return (subject.n3(),gr)
+                    gr.add( (subject, _as_resource(gr,predicate) , object) )
     
 def sync_remote(request,models):
     """

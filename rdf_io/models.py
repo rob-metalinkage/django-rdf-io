@@ -12,7 +12,7 @@ import itertools
 # helpers
 def getattr_path(obj,path) :
     try :
-        return _getattr_related(obj, path.replace('__','.').replace("/",".").split('.'))
+        return _getattr_related(obj,obj, path.replace('__','.').replace("/",".").split('.'))
         
     except ValueError as e:
         import traceback
@@ -22,19 +22,28 @@ def getattr_path(obj,path) :
 def dequote(s):
     """
     If a string has single or double quotes around it, remove them.
-    Make sure the pair of quotes match.
+    todo: Make sure the pair of quotes match.
     If a matching pair of quotes is not found, return the string unchanged.
     """
     if  s.startswith(("'", '"', '<')):
         return s[1:-1]
     return s
     
-def _apply_filter(val, filter) :
+def _apply_filter(val, filter,localobj, rootobj) :
     """
         Apply a simple filter to a specific property, with a list of possible values
     """
-    for targetvel in filter.replace(" OR ",",").split(",") :
-        if val == dequote(targetvel) :
+    for targetval in filter.replace(" OR ",",").split(",") :
+        tval = dequote(targetval)
+        if tval.startswith('^') :
+            tval = getattr(rootobj,tval[1:])
+        elif tval.startswith('.') :
+            tval = getattr(localobj,tval[1:])
+        if tval == 'None' :
+            return bool(val)
+        elif tval == 'NotNone' :
+            return not bool(val)
+        elif val == tval :
             return True
     return False
 
@@ -43,18 +52,27 @@ def apply_pathfilter(obj, filter_expr ):
         apply a filter based on a list of path expressions  path1=a,b AND path2=c,db
     """
     and_clauses = filter_expr.split(" AND ")
+    
     for clause in and_clauses:
+
         (path,vallist) = clause.split("=")
+        if path[:-1] == '!' :
+            negate = True
+            path = path[0:-1]
+        else:
+            negate = False
         or_vals = vallist.split(",")
         # if multiple values - only one needs to match
         matched = False
         for val in getattr_path(obj,path):
             for match in or_vals :
-                if type(val) == bool :
-                    matched = val == (match == 'True')
+                if match == 'None' :
+                    matched = negate ^ ( not val )
+                elif type(val) == bool :
+                    matched = negate ^ (val == (match == 'True'))
                     break;
                 else :
-                    if val == match :
+                    if negate ^ (val == match) :
                         matched = True
                         break
             if matched :
@@ -66,7 +84,7 @@ def apply_pathfilter(obj, filter_expr ):
             
     return True
     
-def _getattr_related(obj, fields):
+def _getattr_related(rootobj,obj, fields):
     """
         get an attribute - if multi-valued will be a list object!
         fields may include filters.  
@@ -85,7 +103,7 @@ def _getattr_related(obj, fields):
             if langfield[0] in ["'" , '"'] :
                 lang = langfield[1:-1]
             else:
-                lang = _getattr_related(obj, [langfield,] + fields).pop(0)
+                lang = _getattr_related(rootobj,obj, [langfield,] + fields).pop(0)
                 fields = []
         except:
             lang = None
@@ -95,7 +113,7 @@ def _getattr_related(obj, fields):
             if typefield[0] in ["'" , '"'] :
                 typeuri = typefield[1:-1]
             else:
-                typeuri = _getattr_related(obj, [typefield,] + fields).pop(0)
+                typeuri = _getattr_related(rootobj,obj, [typefield,] + fields).pop(0)
                 #have reached end of chain and have used up field list after we hit ^^
                 fields = []
         except:
@@ -110,10 +128,10 @@ def _getattr_related(obj, fields):
         # import pdb; pdb.set_trace()
         try:
             # slice the list for fields[:] to force a copy so each iteration starts from top of list in spite of pop()
-            return itertools.chain(*(_getattr_related(xx, fields[:]) for xx in a.all()))
+            return itertools.chain(*(_getattr_related(rootobj,xx, fields[:]) for xx in a.all()))
         except:
             pass
-        if filter and not _apply_filter(a, filter) :
+        if filter and not _apply_filter(a, filter, obj, rootobj) :
             return []
         if lang:
             a = "@".join((a,lang))
@@ -142,23 +160,35 @@ def _getattr_related(obj, fields):
                 filters = {prop : obj}
                 if filter :
                     filterclauses = dict( [fc.split("=") for fc in filter.replace(" AND ",",").split(",")])
+                    extrafilterclauses = {}
                     for fc in filterclauses :
-                        if filterclauses[fc].startswith(("'", '"', '<')) :
-                            filterclauses[fc] = dequote(filterclauses[fc])
+                        fval = filterclauses[fc]
+                        if not fval :                            
+                            extrafilterclauses[ "".join((fc,"__isnull"))] = False
+                        elif fval == 'None' :                            
+                            extrafilterclauses[ "".join((fc,"__isnull"))] = True
+                        elif fval.startswith('^'): # property value via path from root object being serialised
+                            extrafilterclauses[fc] = getattr_path(rootobj,fval[1:]).pop()
+                        elif fval.startswith('.'): # property value via path from current path object
+                            extrafilterclauses[fc] = getattr_path(obj,fval[1:]).pop()    
+                        elif fval.startswith(("'", '"', '<')) :
+                            extrafilterclauses[fc] = dequote(fval)
                         elif not filterclauses[fc].isnumeric() :
                             # look for a value
-                            filterclauses[fc] = getattr(ob, filterclauses[fc])
-                    filters.update(filterclauses)
+                            extrafilterclauses[fc] = getattr(obj, fval)
+                        else:
+                            extrafilterclauses[fc] = fval
+                    filters.update(extrafilterclauses)
                 
                 a = claz.objects.filter(**filters)
                 break
     # will still throw an exception if a is not set!     
     try:
         # slice the list fo fields[:] to force a copy so each iteration starts from top of list in spite of pop()
-        return itertools.chain(*(_getattr_related(xx, fields[:]) for xx in a.all()))
+        return itertools.chain(*(_getattr_related(rootobj,xx, fields[:]) for xx in a.all()))
 #        !list(itertools.chain(*([[1],[2]])))
     except:
-        return _getattr_related(a, fields)
+        return _getattr_related(rootobj,a, fields)
 
 def expand_curie(value):
     try:
@@ -297,9 +327,10 @@ class ObjectMapping(models.Model):
     objects = ObjectMappingManager()
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     name = models.CharField(_(u'Name'),help_text=_(u'unique identifying label'),unique=True,blank=False,max_length=250,editable=True)
+    auto_push = models.BooleanField(_(u'auto_push'),help_text=_(u'set this to push updates to these object to the RDF store automatically'))
     id_attr = models.CharField(_(u'ID Attribute'),help_text=_(u'for nested attribute use syntax a.b.c'),blank=False,max_length=250,editable=True)
     target_uri_expr = EXPR_Field(_(u'target namespace expression'), blank=False,editable=True)
-    obj_type = models.ManyToManyField(ObjectType)
+    obj_type = models.ManyToManyField(ObjectType,null=True, blank=True, help_text=_(u'set this to generate a object rdf:type X statement' ))
     filter = FILTER_Field(_(u'Filter'), null=True, blank=True ,editable=True)
     def natural_key(self):
         return self.name    
@@ -310,13 +341,26 @@ class ObjectMapping(models.Model):
 
 class AttributeMapping(models.Model):
     """
-        records a mapping from an object mapping that defines the object to a value using a predicate
+        records a mapping from an object mapping that defines a relation from the object to a value using a predicate
     """
     scope = models.ForeignKey(ObjectMapping)
-    attr = EXPR_Field(_(u'source attribute'),blank=False,editable=True)
+    attr = EXPR_Field(_(u'source attribute'),help_text=_(u'literal value or path (attribute[filter].)* with optional @element or ^^element eg locationname[language=].name@language.  filter values are empty (=not None), None, or a string value'),blank=False,editable=True)
     # filter = FILTER_Field(_(u'Filter'), null=True, blank=True,editable=True)
     predicate = CURIE_Field(_(u'predicate'),blank=False,editable=True)
     is_resource = models.BooleanField(_(u'as URI'))
     
     def __unicode__(self):
         return ( ' '.join((self.attr, self.predicate )))
+
+class EmbeddedMapping(models.Model):
+    """
+        records a mapping for a complex data structure
+    """
+    scope = models.ForeignKey(ObjectMapping)
+    attr = EXPR_Field(_(u'source attribute'),help_text=_(u'attribute - if empty nothing generated, if multivalued will be iterated over'))
+    predicate = CURIE_Field(_(u'predicate'),blank=False,editable=True)
+    struct = models.TextField(_(u'object structure'),max_length=2000, help_text=_(u' ";" separated list of <predicate> <attributeexpr>  where attribute expr is same as for an AttributeMapping - in future may be an embedded struct inside {} '),blank=False,editable=True)
+    use_blank = models.BooleanField(_(u'embed as blank node'), default=True)
+    
+    def __unicode__(self):
+        return ( ' '.join(('struct:',self.attr, self.predicate )))

@@ -36,10 +36,12 @@ property = a valid name of a property of a django model
 
 related_model_expr = model_name(\({property}\))? 
 
-filter = (field=literal)((,| AND )field=literal)* | literal((,| OR )literal)*
+filter = (field(!)?=literal)((,| AND )field(!)?=literal)* | literal((,| OR )literal)*
 
 Notes:
 * filters on related models will be evaluated within the database using django filters, filters on property values will be performed during serialisation.
+
+* literal values of None or NULL are treated as None or empty strings, as per Django practice.
 
 * filters on properties are a simple list of possible matches (, is the same as " OR " ) and apply to the element of the path 
   person.title['MRS','MISS','MS']  would match any title with value "MRS", "MISS", "MS"
@@ -115,7 +117,7 @@ RDFSTORE = {
  curl -i -H "Content-Type: text/plain" -X POST --data-binary @skos.skwrl http://localhost:8080/marmotta/reasoner/program/skos.skwrl
 ### Operations
 
-RDF-IO is triggered automatically when saving an object once an ObjectMapping is defined for that object type.
+If auto_publish is set in an Object Mapping then the RDF-IO mapping is triggered automatically when saving an object once an ObjectMapping is defined for that object type.
 
 A bulk load to the RDF store can be achieved with /rdf_io/sync_remote/{model}(,{model})*
 

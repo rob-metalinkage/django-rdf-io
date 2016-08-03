@@ -18,18 +18,21 @@ def publish_rdf( **kwargs) :
             "Persisting RDF for {} of type {} status {} body {}".format(obj,ct,result.status_code,result.content))
     
 def setup_signals( **kwargs) :
-    objtype = kwargs['instance']
-    ct = ContentType.objects.get(id = objtype.content_type_id).model_class()
-    signals.post_save.connect(publish_rdf, sender=ct)
-    
-    logger.info(
-            "RDF publishing configured for model {}".format((ct)))
-    
+    objmapping = kwargs['instance']
+    #import pdb; pdb.set_trace()
+    try:
+        if objmapping.auto_push :
+            ct = ContentType.objects.get(id = objmapping.content_type_id).model_class()
+            signals.post_save.connect(publish_rdf, sender=ct)
+            logger.info(
+                "RDF publishing configured for model {}".format((ct)))
+    except:
+        pass
  
 signals.post_save.connect(setup_signals, sender=ObjectMapping)
-try: 
-    for om in ObjectMapping.objects.all() :
-        signals.post_save.send(ObjectMapping, instance=om )
-except Exception as e:
-    logger.error(
-            "Not able to access ObjectMappings - need to run syncdb? {}".format(e))
+#try: 
+#    for om in ObjectMapping.objects.all() :
+#        signals.post_save.send(ObjectMapping, instance=om )
+#except Exception as e:
+#    logger.error(
+#            "Not able to access ObjectMappings - need to run syncdb? {}".format(e))
