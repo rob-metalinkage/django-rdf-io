@@ -52,7 +52,10 @@ def _as_resource(gr,curie) :
 def to_rdfbykey(request,model,key):
     """
         take a model name + object id reference to an instance and apply any RDF serialisers defined for this
+        allows a key to de appended to the uri or supplied by parameter (easier for uri values)
     """
+    if request.GET.get('key'):
+        key = request.GET.get('key')
     try: 
         return _tordf(request,model,None,key)
     except Exception as e: 
