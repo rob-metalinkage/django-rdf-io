@@ -41,8 +41,10 @@ def _as_resource(gr,curie) :
     if cleaned[0:4] == 'http' :
         return URIRef(cleaned)
     # this will raise error if not valid curie format
-    (ns,value) = cleaned.split(":",2)
-    
+    try:
+        (ns,value) = cleaned.split(":",2)
+    except:
+        raise ValueError("value not value HTTP or CURIE format %s" % curie)    
     try :
         return URIRef("".join((_getNamespace(ns),value)))
     except:
@@ -77,7 +79,11 @@ def _tordf(request,model,id,key):
     if request.GET.get('_format') :
         format = request.GET.get('_format')
     # find the model type referenced
-    ct = ContentType.objects.get(model=model)
+    try:
+        (app,model) = model.split('.')
+        ct = ContentType.objects.get(app_label=app,model=model)
+    except:
+        ct = ContentType.objects.get(model=model)
     if not ct :
         raise Http404("No such model found")
     oml = ObjectMapping.objects.filter(content_type=ct)
@@ -258,7 +264,7 @@ def build_rdf( gr,obj, oml, includemembers ) :
                             is_resource = False
                         _add_vals(gr, value, newnode, predicate, expr , is_resource)
             except:
-                raise ValueError("Could not evaluate express em.struct ")
+                raise ValueError("Could not evaluate extended mapping")
         return gr
 
 def _add_vals(gr, obj, subject, predicate, attr, is_resource ) :       
@@ -275,16 +281,18 @@ def _add_vals(gr, obj, subject, predicate, attr, is_resource ) :
                     if is_resource :
                         object = _as_resource(gr,value)
                     else:
-                        try :
-                            (value,valtype) = value.split("^^")
-                            object = Literal(value,datatype=valtype)
-                        except:
+                        try:
                             try :
-                                (value,valtype) = value.split("@")
-                                object = Literal(value,lang=valtype)
+                                (value,valtype) = value.split("^^")
+                                object = Literal(value,datatype=valtype)
                             except:
-                                object = Literal(value)
-                            
+                                try :
+                                    (value,valtype) = value.split("@")
+                                    object = Literal(value,lang=valtype)
+                                except:
+                                    object = Literal(value)
+                        except:
+                            raise ValueError("Value not a convertable type %s" % type(value))
                     gr.add( (subject, _as_resource(gr,predicate) , object) )
     
 def sync_remote(request,models):
@@ -294,12 +302,18 @@ def sync_remote(request,models):
     if request.GET.get('pdb') :
         import pdb; pdb.set_trace()
  
-    for modelname in models.split(",") :
-         do_sync_remote( modelname )
+    for model in models.split(",") :
+        try:
+            (app,model) = model.split('.')
+            ct = ContentType.objects.get(app_label=app,model=model)
+        except:
+            ct = ContentType.objects.get(model=model)
+        if not ct :
+            raise Http404("No such model found")
+        do_sync_remote( model, ct )
     return HttpResponse("sync successful for {}".format(models), status=200)
     
-def do_sync_remote(formodel):
-    ct = ContentType.objects.get(model=formodel)
+def do_sync_remote(formodel, ct):
     oml = ObjectMapping.objects.filter(content_type=ct)
     modelclass = ct.model_class()
     for obj in modelclass.objects.all() :

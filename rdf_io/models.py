@@ -125,6 +125,8 @@ def _getattr_related(rootobj,obj, fields):
             field = field[0:field.index("[")]
         
         a = getattr(obj, field)
+        if not a :
+            return []
         # import pdb; pdb.set_trace()
         try:
             # slice the list for fields[:] to force a copy so each iteration starts from top of list in spite of pop()
@@ -314,7 +316,7 @@ class ObjectType(models.Model):
     
     # check short form is registered
     def __unicode__(self):              # __unicode__ on Python 2
-        return self.label 
+        return " -- ".join((self.uri,self.label ))
 
 class ObjectMappingManager(models.Manager):
     def get_by_natural_key(self, name):
@@ -359,7 +361,7 @@ class EmbeddedMapping(models.Model):
     scope = models.ForeignKey(ObjectMapping)
     attr = EXPR_Field(_(u'source attribute'),help_text=_(u'attribute - if empty nothing generated, if multivalued will be iterated over'))
     predicate = CURIE_Field(_(u'predicate'),blank=False,editable=True)
-    struct = models.TextField(_(u'object structure'),max_length=2000, help_text=_(u' ";" separated list of <predicate> <attributeexpr>  where attribute expr is same as for an AttributeMapping - in future may be an embedded struct inside {} '),blank=False,editable=True)
+    struct = models.TextField(_(u'object structure'),max_length=2000, help_text=_(u' ";" separated list of <em>predicate</em> <em>attribute expr</em>  where attribute expr a model field or "literal" or <uri> - in future may be an embedded struct inside {} '),blank=False,editable=True)
     use_blank = models.BooleanField(_(u'embed as blank node'), default=True)
     
     def __unicode__(self):
