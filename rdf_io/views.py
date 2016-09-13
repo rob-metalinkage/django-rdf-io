@@ -117,7 +117,11 @@ def pub_rdf(request,model,id):
     if request.GET.get('pdb') :
         import pdb; pdb.set_trace()
     # find the model type referenced
-    ct = ContentType.objects.get(model=model)
+    try:
+        (app,model) = model.split('.')
+        ct = ContentType.objects.get(app_label=app,model=model)
+    except:
+        ct = ContentType.objects.get(model=model)
     if not ct :
         raise Http404("No such model found")
     oml = ObjectMapping.objects.filter(content_type=ct)
@@ -136,6 +140,7 @@ def publish(obj, model, oml ):
         rdfstore = settings.RDFSTORE['default']
         auth = rdfstore.get('auth')
         server = rdfstore['server']
+        server_api = rdfstore['server_api']
     except:
         return  HttpResponse("RDF store not configured", status=410 )
         
@@ -144,6 +149,8 @@ def publish(obj, model, oml ):
         if not rdfstore.has_key('server') :
             rdfstore['server'] = server
             rdfstore['auth'] = auth
+        if not rdfstore.has_key('server_api') :
+            rdfstore['server_api'] = server_api            
     except:
         pass  # use default then
  
@@ -161,6 +168,14 @@ def publish(obj, model, oml ):
 #    curl -X POST -H "Content-Type: text/turtle" -d @- http://192.168.56.151:8080/marmotta/import/upload?context=http://mapstory.org/def/featuretypes/gazetteer 
     resttgt = "".join( ( rdfstore['server'],_resolveTemplate(rdfstore['target'], model, obj ) ))  
 
+    if rdfstore['server_api'] == "RDF4JREST" :
+        return _rdf4j_push(rdfstore, resttgt, model, obj, gr )
+    elif rdfstore['server_api'] == "LDP" :
+        return _ldp_push(rdfstore, resttgt, model, obj, gr )
+    else:
+        return  HttpResponse("Unknown server API" , status=500 )
+        
+def _ldp_push(rdfstore, resttgt, model, obj, gr ):
     etag = _get_etag(resttgt)
     headers = {'Content-Type': 'text/turtle'} 
     if etag :
@@ -169,14 +184,13 @@ def publish(obj, model, oml ):
     for h in rdfstore.get('headers') or [] :
         headers[h] = _resolveTemplate( rdfstore['headers'][h], model, obj )
     
-    
     result = requests.put( resttgt, headers=headers , data=gr.serialize(format="turtle"), auth=rdfstore.get('auth'))
-    logger.info ( "Updating resource {} {}".format(resttgt,result.status_code) )
+    #logger.info ( "Updating resource {} {}".format(resttgt,result.status_code) )
     if result.status_code > 400 :
 #         print "Posting new resource"
 #         result = requests.post( resttgt, headers=headers , data=gr.serialize(format="turtle"))
         logger.error ( "Failed to publish resource {} {}".format(resttgt,result.status_code) )
-        return HttpResponse ("Failed to publish resource {} {}".format(resttgt,result.status_code) , status = result.status_code )
+        return HttpResponse ("Failed to publish resource {} {} : {} ".format(resttgt,result.status_code, result.content) , status = result.status_code )
     return result 
 
 def _get_etag(uri):
@@ -186,6 +200,23 @@ def _get_etag(uri):
     # could put in cache here - but for now just issue a HEAD
     result = requests.head(uri)
     return result.headers.get('ETag')
+        
+def _rdf4j_push(rdfstore, resttgt, model, obj, gr ):
+    #import pdb; pdb.set_trace()
+    headers = {'Content-Type': 'application/x-turtle;charset=UTF-8'} 
+  
+    for h in rdfstore.get('headers') or [] :
+        headers[h] = _resolveTemplate( rdfstore['headers'][h], model, obj )
+    
+    result = requests.put( resttgt, headers=headers , data=gr.serialize(format="turtle"))
+    logger.info ( "Updating resource {} {}".format(resttgt,result.status_code) )
+    if result.status_code > 400 :
+#         print "Posting new resource"
+#         result = requests.post( resttgt, headers=headers , data=gr.serialize(format="turtle"))
+        logger.error ( "Failed to publish resource {} {}".format(resttgt,result.status_code) )
+        return HttpResponse ("Failed to publish resource {} {}".format(resttgt,result.status_code) , status = result.status_code )
+    return result 
+
     
 def _resolveTemplate(template, model, obj) :
     

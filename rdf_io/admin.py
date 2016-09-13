@@ -32,6 +32,7 @@ class EmbeddedMappingInline(admin.TabularInline):
 class ObjectMappingAdmin(admin.ModelAdmin):
     search_fields = ['content_type__name' ]
     inlines = [   AttributeMappingInline, EmbeddedMappingInline]
+    filter_horizontal = ('obj_type',)
     pass
     
 class AttributeMappingAdmin(admin.ModelAdmin):
