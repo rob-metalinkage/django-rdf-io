@@ -113,7 +113,10 @@ def _getattr_related(rootobj,obj, fields):
             if typefield[0] in ["'" , '"'] :
                 typeuri = typefield[1:-1]
             else:
-                typeuri = _getattr_related(rootobj,obj, [typefield,] + fields).pop(0)
+                try:
+                    typeuri = _getattr_related(rootobj,obj, [typefield,] + fields).pop(0)
+                except Exception as e :
+                    raise ValueError("error accessing data type field '{}' in field '{}' : {}".format(typefield, field, e) )
                 #have reached end of chain and have used up field list after we hit ^^
                 fields = []
         except:
@@ -131,7 +134,7 @@ def _getattr_related(rootobj,obj, fields):
         try:
             # slice the list for fields[:] to force a copy so each iteration starts from top of list in spite of pop()
             return itertools.chain(*(_getattr_related(rootobj,xx, fields[:]) for xx in a.all()))
-        except:
+        except Exception as e:
             pass
         if filter and not _apply_filter(a, filter, obj, rootobj) :
             return []
@@ -170,9 +173,22 @@ def _getattr_related(rootobj,obj, fields):
                         elif fval == 'None' :                            
                             extrafilterclauses[ "".join((fc,"__isnull"))] = True
                         elif fval.startswith('^'): # property value via path from root object being serialised
-                            extrafilterclauses[fc] = getattr_path(rootobj,fval[1:]).pop()
+                            try:
+                                objvals = getattr_path(rootobj,fval[1:])
+                                if len(objvals) == 0 :
+                                    return [] # non null match against null source fails
+                                extrafilterclauses[fc] = objvals.pop()
+                            except Exception as e:
+                                raise ValueError ("Error in filter clause %s on field %s " % (fc,prop))
+                            
                         elif fval.startswith('.'): # property value via path from current path object
-                            extrafilterclauses[fc] = getattr_path(obj,fval[1:]).pop()    
+                            try:
+                                objvals = getattr_path(obj,fval[1:])
+                                if len(objvals) == 0 :
+                                    return [] # non null match against null source fails
+                                extrafilterclauses[fc] = objvals.pop()
+                            except Exception as e:
+                                raise ValueError ("Error in filter clause %s on field %s " % (fc,prop))
                         elif fval.startswith(("'", '"', '<')) :
                             extrafilterclauses[fc] = dequote(fval)
                         elif not filterclauses[fc].isnumeric() :

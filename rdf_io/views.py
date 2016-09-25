@@ -130,22 +130,30 @@ def pub_rdf(request,model,id):
     
     obj = get_object_or_404(ct.model_class(), pk=id)
     # ok so object exists and is mappable, better get down to it..
-   
-    result = publish(obj, model, oml)
-    return HttpResponse(result.content,status=result.status_code )
-    
-def publish(obj, model, oml ):
-    # now get the remote store mappings 
+
     try:
-        rdfstore = settings.RDFSTORE['default']
-        auth = rdfstore.get('auth')
-        server = rdfstore['server']
-        server_api = rdfstore['server_api']
+        rdfstore = _get_rdfstore(model,name=request.GET.get('rdfstore') )
     except:
         return  HttpResponse("RDF store not configured", status=410 )
-        
+    
+    result = publish(obj, model, oml,rdfstore)
+
+    return HttpResponse("Server reports %s" % result.content,status=result.status_code )
+    
+def _get_rdfstore(model, name=None ):
+    # now get the remote store mappings 
+    
+    if name :
+        rdfstore_cfg = settings.RDFSTORES[name]
+    else:
+        rdfstore_cfg = settings.RDFSTORE
+    rdfstore = rdfstore_cfg['default']
+    auth = rdfstore.get('auth')
+    server = rdfstore['server']
+    server_api = rdfstore['server_api']
+       
     try:
-        rdfstore = settings.RDFSTORE[model]
+        rdfstore = rdfstore_cfg[model]
         if not rdfstore.has_key('server') :
             rdfstore['server'] = server
             rdfstore['auth'] = auth
@@ -153,7 +161,11 @@ def publish(obj, model, oml ):
             rdfstore['server_api'] = server_api            
     except:
         pass  # use default then
- 
+    
+    return rdfstore
+    
+def publish(obj, model, oml, rdfstore ):
+        
     gr = Graph()
 #    import pdb; pdb.set_trace()
 #    ns_mgr = NamespaceManager(Graph())
@@ -224,7 +236,7 @@ def _resolveTemplate(template, model, obj) :
     for (literal,param,repval,conv) in Formatter().parse(template) :
         if param and param != 'model' :
             try:
-                vals[param] = getattr_path(obj,param).pop()
+                vals[param] = iter(getattr_path(obj,param)).next()
             except:
                 if param == 'slug'  :
                     vals[param] = obj.id
@@ -272,34 +284,42 @@ def build_rdf( gr,obj, oml, includemembers ) :
         for em in EmbeddedMapping.objects.filter(scope=om) :
             try:
                 # three options - scalar value in which case attributes relative to basic obj, a mulitvalue obj or we have to look for related objects
-                valuelist = [obj,]
                 try:
-                    attrvalue = getattr(obj,em.attr)
-                    valuelist = attrvalue.all()
+                    valuelist = getattr_path(obj,em.attr)
                 except:
-                    # last thing to try - look for related models...
-                    try:
-                        valuelist = getattr(obj, "_".join((em.attr.lower(),'set'))).all()
-                    except:
-                        pass # revert to scalar 
-                    
+                    valuelist = [obj,] 
+
                 for value in valuelist :
                     newnode = BNode()
                     gr.add( (subject, _as_resource(gr,em.predicate) , newnode) )
                     for element in em.struct.split(";") :
                         (predicate,expr) = element.split()
+                        # resolve any internal template parameters {x}
+                        expr = expr.replace("{$URI}", uri )
+                        for (lit,var,x,y) in Formatter().parse(expr) :
+                            if var :
+                                expr = expr.replace(var.join(("{","}")), iter(getattr_path(value,var)).next())
+                        is_resource = False
                         if expr.startswith("<") :
                             is_resource = True
-                            expr = expr[1:-1]
+                            expr = expr[1:-1].join(('"','"'))
+                        elif expr.startswith("/") :
+                            #value relativeto root obj  - retrieve and use as literal
+                            try:
+                                expr = iter(getattr_path(obj,expr[1:])).next()
+                                if type(expr) == str :
+                                    expr = expr.join( ('"','"'))
+                            except:
+                                raise ValueError( "Could not access value of %s from mapped object %s (/ is relative to the object being mapped" % (expr,obj) )
                         else:
                             is_resource = False
                         _add_vals(gr, value, newnode, predicate, expr , is_resource)
-            except:
-                raise ValueError("Could not evaluate extended mapping")
+            except Exception as e:
+                raise ValueError("Could not evaluate extended mapping : %s" % e)
         return gr
 
 def _add_vals(gr, obj, subject, predicate, attr, is_resource ) :       
-            if attr[0] in '\'\"' : # the a literal
+            if type(attr) == float or attr[0] in '\'\"' : # then a literal
                 if is_resource :
                     gr.add( (subject, _as_resource(gr,predicate) , _as_resource(gr,attr) ) )
                 else:
@@ -341,13 +361,20 @@ def sync_remote(request,models):
             ct = ContentType.objects.get(model=model)
         if not ct :
             raise Http404("No such model found")
-        do_sync_remote( model, ct )
+
+        try:
+            rdfstore = _get_rdfstore(model,name=request.GET.get('rdfstore') )
+        except:
+            return  HttpResponse("RDF store not configured", status=410 )
+
+        do_sync_remote( model, ct , rdfstore )
     return HttpResponse("sync successful for {}".format(models), status=200)
     
-def do_sync_remote(formodel, ct):
+def do_sync_remote(formodel, ct ,rdfstore):
+
     oml = ObjectMapping.objects.filter(content_type=ct)
     modelclass = ct.model_class()
     for obj in modelclass.objects.all() :
-        publish( obj, formodel, oml)
+        publish( obj, formodel, oml, rdfstore)
 # gr.add((URIRef('skos:Concept'), RDF.type, URIRef('foaf:Person')))
 # gr.add((URIRef('rdf:Concept'), RDF.type, URIRef('xxx:Person')))
