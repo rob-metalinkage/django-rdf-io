@@ -316,7 +316,8 @@ def build_rdf( gr,obj, oml, includemembers ) :
                         _add_vals(gr, value, newnode, predicate, expr , is_resource)
             except Exception as e:
                 raise ValueError("Could not evaluate extended mapping : %s" % e)
-        return gr
+    # do this after looping through all object mappings!
+    return gr
 
 def _add_vals(gr, obj, subject, predicate, attr, is_resource ) :       
             if type(attr) == float or attr[0] in '\'\"' : # then a literal

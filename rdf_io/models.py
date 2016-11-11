@@ -149,6 +149,7 @@ def _getattr_related(rootobj,obj, fields):
         else :
             relprop = None
             
+            
         try:
             reltype = ContentType.objects.get(model=field)
         except ContentType.DoesNotExist as e :
@@ -161,7 +162,7 @@ def _getattr_related(rootobj,obj, fields):
            
             if relprop and prop != relprop :
                 continue
-            if relprop or type(val) is ReverseSingleRelatedObjectDescriptor and val.field.related.model == claz :
+            if relprop or type(val) is ReverseSingleRelatedObjectDescriptor and val.field.related.model == type(obj) :
                 filters = {prop : obj}
                 if filter :
                     filterclauses = dict( [fc.split("=") for fc in filter.replace(" AND ",",").split(",")])
