@@ -165,6 +165,9 @@ def _get_rdfstore(model, name=None ):
     return rdfstore
     
 def publish(obj, model, oml, rdfstore ):
+      
+    if not rdfstore:
+        rdfstore = _get_rdfstore(model,None)
         
     gr = Graph()
 #    import pdb; pdb.set_trace()

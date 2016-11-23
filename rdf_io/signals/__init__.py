@@ -13,7 +13,7 @@ def publish_rdf( **kwargs) :
     obj = kwargs['instance']
     ct = ContentType.objects.get_for_model(obj)
     oml = ObjectMapping.objects.filter(content_type=ct)
-    result = publish( obj, ct.name, oml) 
+    result = publish( obj, ct.name, oml, None) 
     logger.debug(
             "Persisting RDF for {} of type {} status {} body {}".format(obj,ct,result.status_code,result.content))
     
