@@ -26,7 +26,8 @@ in your master django project:
 		(note that this will happen automatically on object save if an object mapping is defined)
 	4) To republish all objects for a set of django models
 		`{SERVER_URL}/rdf_io/sync_remote/{model_name}[,{model_name}]*`
-		
+	
+NOTE: for the 	/rdf_io/to_rdf/{model_name}/key/{model_natural_key} to work the target model must define a manage with a get_by_natural_key method that takes a unique single term - such as a uri - note this will allow use of CURIES such as myns:myterm where the prefix is registered as a namespace in the RDF_IO space. If a CURIE is detected, then RDF_IO will try to match first as a string, then expand to a full URI and match.
 
 ### Mapping syntax
 Mapping is non trivial - because the elements of your model may need to extracted from related models 

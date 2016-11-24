@@ -92,7 +92,16 @@ def _tordf(request,model,id,key):
     if id :    
         obj = get_object_or_404(ct.model_class(), pk=id)
     else :
-        obj = ct.model_class().objects.get_by_natural_key(key)
+        try:
+            obj = ct.model_class().objects.get_by_natural_key(key)
+        except Exception as e:
+            try:
+                (prefix,term) = key.split(':')
+                ns = Namespace.objects.get(prefix=prefix)
+                urikey = "".join((ns.uri,term))
+                obj = ct.model_class().objects.get_by_natural_key(urikey)
+            except Exception as e2:
+                raise e
     
     # ok so object exists and is mappable, better get down to it..
  
