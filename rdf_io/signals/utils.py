@@ -42,7 +42,7 @@ def _setup(objmapping) :
         pass
 
 def list_pubs():
-    import pdb; pdb.set_trace()
+#    import pdb; pdb.set_trace()
     import weakref
     msg = []
     for receiver in signals.post_save.receivers:
