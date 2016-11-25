@@ -15,6 +15,25 @@ pip install -e (where you put it)
 in your master django project:
 * add 'rdf_io' to the INSTALLED_APPS  in settings.py
 * add    ` url(r"^rdf_io/", include('rdf_io.urls'))`  to urls.py
+* define settings for RDFSTORE, using the syntax here: 
+
+## Automated publishing of updated to RDF
+This is really only gauranteed for pushing additions and updates - deletions are not handled, although updates will tend to replace statements.
+
+### on startup to enable (necessary after django-reload)
+NB - TODO a way to force this to happen automatically - needs to happen after both RDF_IO and the target models are installed, so cant go in initialisation for either model.
+
+`{SERVER_URL}/rdf_io/ctl_signals/sync`
+
+### to turn on publishing for a model class
+1) check Auto-push flag is checked in an ObjectMapping for that model class
+2) save - should register a post_save signal for the model class
+
+### to turn on/off  publishing for all model classes 
+`{SERVER_URL}/rdf_io/ctl_signals/(on/off)`
+
+### 
+
 
 ## Usage
 	1) Define mappings for your target models using the admin interface $SERVER/admin/rdf_io

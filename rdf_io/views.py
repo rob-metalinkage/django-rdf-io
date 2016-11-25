@@ -9,6 +9,8 @@ from rdflib import BNode
 
 import requests
 
+from django.db.models import signals
+
 from django.shortcuts import get_object_or_404
 # deprecated since 1.3
 # from django.views.generic.list_detail import object_list
@@ -20,6 +22,7 @@ from django.http import HttpResponse,Http404
 from rdflib import Graph,namespace
 from rdflib.term import URIRef, Literal
 from rdflib.namespace import NamespaceManager,RDF
+
 
 
 import logging
@@ -391,3 +394,28 @@ def do_sync_remote(formodel, ct ,rdfstore):
         publish( obj, formodel, oml, rdfstore)
 # gr.add((URIRef('skos:Concept'), RDF.type, URIRef('foaf:Person')))
 # gr.add((URIRef('rdf:Concept'), RDF.type, URIRef('xxx:Person')))
+
+def ctl_signals(request,cmd):
+    """utility view to control and debug signals"""
+    from rdf_io.signals import setup_signals,list_pubs,sync_signals
+    if cmd == 'on':
+        msg = auto_on()
+    elif cmd == 'off' :
+        msg = "not implemented"
+    elif cmd == 'list' :
+        msg = list_pubs()
+    elif cmd == 'sync' :
+        msg = sync_signals()
+    else:
+        msg = "Command %s not understood" % cmd
+    return HttpResponse(msg, status=200)
+ 
+
+def auto_on():
+    """turn Auto push signals on"""
+    from rdf_io.signals import setup_signals,list_pubs
+    signals.post_save.connect(setup_signals, sender=ObjectMapping)
+    return list_pubs()
+
+    
+    
