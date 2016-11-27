@@ -127,88 +127,111 @@ def _getattr_related(rootobj,obj, fields):
             filter = field[ field.index("[") +1 : -1 ]
             field = field[0:field.index("[")]
         
-        a = getattr(obj, field)
-        if not a :
+        val = getattr(obj, field)
+        if not val :
             return []
         # import pdb; pdb.set_trace()
         try:
             # slice the list for fields[:] to force a copy so each iteration starts from top of list in spite of pop()
-            return itertools.chain(*(_getattr_related(rootobj,xx, fields[:]) for xx in a.all()))
+            return itertools.chain(*(_getattr_related(rootobj,xx, fields[:]) for xx in val.all()))
         except Exception as e:
             pass
-        if filter and not _apply_filter(a, filter, obj, rootobj) :
+        if filter and not _apply_filter(val, filter, obj, rootobj) :
             return []
         if lang:
-            a = "@".join((a,lang))
+            val = "@".join((val,lang))
         elif typeuri :
-            a = "^^".join((a,typeuri))
+            val = "^^".join((val,typeuri))
     except AttributeError:
-        # then try to find objects of this type with a foreign key property using either (name) supplied or target object type
-        if field.endswith(")") :
-            (field, relprop ) = str(field[0:-1]).split("(")
-        else :
-            relprop = None
-            
-            
-        try:
-            reltype = ContentType.objects.get(model=field)
-        except ContentType.DoesNotExist as e :
-            raise ValueError("Could not locate attribute or related model '{}' in element '{}'".format(field, type(obj)) )
-        # id django 1.7+ we could just use field_set to get a manager :-(
-        claz = reltype.model_class()
+
         # import pdb; pdb.set_trace()
-        for prop,val in claz.__dict__.items() :
-            # skip related property names if set
-           
-            if relprop and prop != relprop :
-                continue
-            if relprop or type(val) is ReverseSingleRelatedObjectDescriptor and val.field.related.model == type(obj) :
-                filters = {prop : obj}
-                if filter :
-                    filterclauses = dict( [fc.split("=") for fc in filter.replace(" AND ",",").split(",")])
-                    extrafilterclauses = {}
-                    for fc in filterclauses :
-                        fval = filterclauses[fc]
-                        if not fval :                            
-                            extrafilterclauses[ "".join((fc,"__isnull"))] = False
-                        elif fval == 'None' :                            
-                            extrafilterclauses[ "".join((fc,"__isnull"))] = True
-                        elif fval.startswith('^'): # property value via path from root object being serialised
-                            try:
-                                objvals = getattr_path(rootobj,fval[1:])
-                                if len(objvals) == 0 :
-                                    return [] # non null match against null source fails
-                                extrafilterclauses[fc] = objvals.pop()
-                            except Exception as e:
-                                raise ValueError ("Error in filter clause %s on field %s " % (fc,prop))
-                            
-                        elif fval.startswith('.'): # property value via path from current path object
-                            try:
-                                objvals = getattr_path(obj,fval[1:])
-                                if len(objvals) == 0 :
-                                    return [] # non null match against null source fails
-                                extrafilterclauses[fc] = objvals.pop()
-                            except Exception as e:
-                                raise ValueError ("Error in filter clause %s on field %s " % (fc,prop))
-                        elif fval.startswith(("'", '"', '<')) :
-                            extrafilterclauses[fc] = dequote(fval)
-                        elif not filterclauses[fc].isnumeric() :
-                            # look for a value
-                            extrafilterclauses[fc] = getattr(obj, fval)
-                        else:
-                            extrafilterclauses[fc] = fval
-                    filters.update(extrafilterclauses)
-                
-                a = claz.objects.filter(**filters)
-                break
-    # will still throw an exception if a is not set!     
+        filters=_makefilters(filter, obj, rootobj)
+        relobjs = _get_relobjs(obj,field,filters)
+
+        # will still throw an exception if val is not set!     
     try:
         # slice the list fo fields[:] to force a copy so each iteration starts from top of list in spite of pop()
-        return itertools.chain(*(_getattr_related(rootobj,xx, fields[:]) for xx in a.all()))
+        return itertools.chain(*(_getattr_related(rootobj,xx, fields[:]) for xx in relobjs.all()))
 #        !list(itertools.chain(*([[1],[2]])))
     except:
-        return _getattr_related(rootobj,a, fields)
+        return _getattr_related(obj,val, fields)
 
+def _get_relobjs(obj,field,filters):
+    """Find related objects that match
+    
+    Could be linked using a "related_name" or as <type>_set
+    
+    django versions have changed this around so somewhat tricky..
+    """
+    # then try to find objects of this type with a foreign key property using either (name) supplied or target object type
+    
+    if field.endswith(")") :
+        (field, relprop ) = str(field[0:-1]).split("(")
+    else :
+        relprop = None
+                   
+    try:
+        reltype = ContentType.objects.get(model=field)
+    except ContentType.DoesNotExist as e :
+        raise ValueError("Could not locate attribute or related model '{}' in element '{}'".format(field, type(obj)) )
+
+    # if no related_name set in related model then only one candidate and djanog creates X_set attribute we can use
+    try:
+        return get_attr(obj, "".join((field,"_set"))).filter(**filters)
+    except:
+        pass
+    
+    # trickier then - need to look at models of the named type
+    claz = reltype.model_class()
+    for prop,val in claz.__dict__.items() :
+        # skip related property names if set   
+        if relprop and prop != relprop :
+            continue
+        if relprop or type(val) is ReverseSingleRelatedObjectDescriptor and val.field.related.model == type(obj) :
+            filters.update({prop:obj})
+            return claz.objects.filter(**filters)        
+        
+def _makefilters(filter, obj, rootobj):
+    """Makes a django filter syntax from provided filter
+    
+    allow for filter clauses with references relative to the object being serialised, the root of the path being encoded or the element in the path specifying the filter""" 
+    if not filter :
+        return {}
+    filterclauses = dict( [fc.split("=") for fc in filter.replace(" AND ",",").split(",")])
+    extrafilterclauses = {}
+    for fc in filterclauses :
+        fval = filterclauses[fc]
+        if not fval :                            
+            extrafilterclauses[ "".join((fc,"__isnull"))] = False
+        elif fval == 'None' :                            
+            extrafilterclauses[ "".join((fc,"__isnull"))] = True
+        elif fval.startswith('^'): # property value via path from root object being serialised
+            try:
+                objvals = getattr_path(rootobj,fval[1:])
+                if len(objvals) == 0 :
+                    return [] # non null match against null source fails
+                extrafilterclauses[fc] = objvals.pop()
+            except Exception as e:
+                raise ValueError ("Error in filter clause %s on field %s " % (fc,prop))
+            
+        elif fval.startswith('.'): # property value via path from current path object
+            try:
+                objvals = getattr_path(obj,fval[1:])
+                if len(objvals) == 0 :
+                    return [] # non null match against null source fails
+                extrafilterclauses[fc] = objvals.pop()
+            except Exception as e:
+                raise ValueError ("Error in filter clause %s on field %s " % (fc,prop))
+        elif fval.startswith(("'", '"', '<')) :
+            extrafilterclauses[fc] = dequote(fval)
+        elif not filterclauses[fc].isnumeric() :
+            # look for a value
+            extrafilterclauses[fc] = getattr(obj, fval)
+        else:
+            extrafilterclauses[fc] = fval
+       
+    return extrafilterclauses
+   
 def expand_curie(value):
     try:
         parts = value.split(":")
