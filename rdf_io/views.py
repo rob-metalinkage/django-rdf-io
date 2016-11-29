@@ -1,12 +1,13 @@
 # # -*- coding:utf-8 -*-
 from django.shortcuts import render_to_response, redirect
-from .models import ObjectMapping,Namespace,AttributeMapping,EmbeddedMapping, ObjectType, getattr_path, apply_pathfilter, expand_curie
+from .models import ObjectMapping,Namespace,AttributeMapping,EmbeddedMapping, ObjectType, getattr_path, apply_pathfilter, expand_curie, dequote
 from django.template import RequestContext
 from django.contrib.contenttypes.models import ContentType
 from django.conf import settings
 from string import Formatter
 from rdflib import BNode
-
+# TODO make python 3 safe!
+import urllib as u
 import requests
 
 from django.db.models import signals
@@ -38,9 +39,9 @@ def _getNamespace( prefix ) :
          else :
             _nslist[ prefix ] = None
     return _nslist[prefix]
-    
+  
 def _as_resource(gr,curie) :
-    cleaned = str(curie).translate(None,'"\'<>')
+    cleaned = dequote(curie)
     if cleaned[0:4] == 'http' :
         return URIRef(cleaned)
     # this will raise error if not valid curie format
@@ -305,15 +306,18 @@ def build_rdf( gr,obj, oml, includemembers ) :
                     valuelist = [obj,] 
 
                 for value in valuelist :
-                    newnode = BNode()
-                    gr.add( (subject, _as_resource(gr,em.predicate) , newnode) )
+                    newnode = None
+ 
                     for element in em.struct.split(";") :
-                        (predicate,expr) = element.split()
+                        try:
+                            (predicate,expr) = element.split()
+                        except:
+                            predicate = None
+                            expr = element
+                            
                         # resolve any internal template parameters {x}
                         expr = expr.replace("{$URI}", uri )
-                        for (lit,var,x,y) in Formatter().parse(expr) :
-                            if var :
-                                expr = expr.replace(var.join(("{","}")), iter(getattr_path(value,var)).next())
+
                         is_resource = False
                         if expr.startswith("<") :
                             is_resource = True
@@ -328,9 +332,24 @@ def build_rdf( gr,obj, oml, includemembers ) :
                                 raise ValueError( "Could not access value of %s from mapped object %s (/ is relative to the object being mapped" % (expr,obj) )
                         else:
                             is_resource = False
-                        _add_vals(gr, value, newnode, predicate, expr , is_resource)
+                        
+                        for (lit,var,x,y) in Formatter().parse(expr) :
+                            if var :
+                                val = iter(getattr_path(value,var)).next()
+                                if is_resource:
+                                    val = u.urlencode({ 'v' : val.encode('utf-8')})[2:]
+                                expr = expr.replace(var.join(("{","}")), val )
+                        if predicate :
+                            # an internal struct has been found so add a new node if not ye done
+                            if not newnode:
+                                newnode = BNode()
+                                gr.add( (subject, _as_resource(gr,em.predicate) , newnode) )
+                            _add_vals(gr, value, newnode, predicate, expr , is_resource)
+                        else:
+                            # add to parent
+                            _add_vals(gr, value, subject, am.predicate, expr , is_resource)
             except Exception as e:
-                raise ValueError("Could not evaluate extended mapping : %s" % e)
+                raise ValueError("Could not evaluate extended mapping %s : %s " % (e,em.attr))
     # do this after looping through all object mappings!
     return gr
 
