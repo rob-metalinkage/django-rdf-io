@@ -349,7 +349,7 @@ def build_rdf( gr,obj, oml, includemembers ) :
                             # add to parent
                             _add_vals(gr, value, subject, am.predicate, expr , is_resource)
             except Exception as e:
-                import sys
+                import traceback; import sys; traceback.print_exc()
                 print "Could not evaluate extended mapping %s : %s " % (e,em.attr), sys.exc_info()
                 raise ValueError("Could not evaluate extended mapping %s : %s " % (e,em.attr))
     # do this after looping through all object mappings!
