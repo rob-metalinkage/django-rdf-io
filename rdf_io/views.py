@@ -335,9 +335,12 @@ def build_rdf( gr,obj, oml, includemembers ) :
                         
                         for (lit,var,x,y) in Formatter().parse(expr) :
                             if var :
-                                val = iter(getattr_path(value,var)).next()
-                                if is_resource:
-                                    val = u.urlencode({ 'v' : val.encode('utf-8')})[2:]
+                                try:
+                                    val = iter(getattr_path(value,var)).next()
+                                    if is_resource:
+                                        val = u.urlencode({ 'v' : val.encode('utf-8')})[2:]
+                                except:
+                                    val="{!variable not found : %s}", var
                                 expr = expr.replace(var.join(("{","}")), val )
                         if predicate :
                             # an internal struct has been found so add a new node if not ye done
@@ -347,7 +350,7 @@ def build_rdf( gr,obj, oml, includemembers ) :
                             _add_vals(gr, value, newnode, predicate, expr , is_resource)
                         else:
                             # add to parent
-                            _add_vals(gr, value, subject, am.predicate, expr , is_resource)
+                            _add_vals(gr, value, subject, em.predicate, expr , is_resource)
             except Exception as e:
                 import traceback; import sys; traceback.print_exc()
                 print "Could not evaluate extended mapping %s : %s " % (e,em.attr), sys.exc_info()
@@ -427,6 +430,8 @@ def ctl_signals(request,cmd):
         msg = list_pubs()
     elif cmd == 'sync' :
         msg = sync_signals()
+    elif cmd == 'help' :
+        msg = "usage /rdf_io/ctl_signals/(on|off|list|sync|help)"
     else:
         msg = "Command %s not understood" % cmd
     return HttpResponse(msg, status=200)
