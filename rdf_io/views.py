@@ -363,7 +363,11 @@ def _add_vals(gr, obj, subject, predicate, attr, is_resource ) :
                 if is_resource :
                     gr.add( (subject, _as_resource(gr,predicate) , _as_resource(gr,attr) ) )
                 else:
-                    gr.add( (subject, _as_resource(gr,predicate) , Literal(attr) ))
+                    try:
+                        (str,lang) = attr.split('@')
+                        gr.add( (subject, _as_resource(gr,predicate) , Literal(dequote(str),lang=lang) ))
+                    except:
+                        gr.add( (subject, _as_resource(gr,predicate) , Literal(dequote(attr)) ))
             else :
                 values = getattr_path(obj,attr)
                 for value in values :
