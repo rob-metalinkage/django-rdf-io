@@ -79,9 +79,13 @@ def to_rdfbyid(request,model,id):
 def _tordf(request,model,id,key):
     if request.GET.get('pdb') :
         import pdb; pdb.set_trace()
-    format = 'json-ld'
-    if request.GET.get('_format') :
-        format = request.GET.get('_format')
+    format = request.GET.get('_format')
+    if format not in ('turtle','json-ld'):
+        if format == 'json':
+            format = "json-ld"
+        else:
+            format = "turtle"
+
     # find the model type referenced
     try:
         (app,model) = model.split('.')
@@ -336,11 +340,20 @@ def build_rdf( gr,obj, oml, includemembers ) :
                         for (lit,var,x,y) in Formatter().parse(expr) :
                             if var :
                                 try:
-                                    val = iter(getattr_path(value,var)).next()
+                                    if var.startswith("^"):
+                                        val = iter(getattr_path(obj,var[1:])).next()
+                                    else:
+                                        val = iter(getattr_path(value,var)).next()
+                                    
                                     if is_resource:
-                                        val = u.urlencode({ 'v' : val.encode('utf-8')})[2:]
+                                        try:
+                                            val = u.urlencode({ 'v' : val.encode('utf-8')})[2:]
+                                        except:
+                                            #not a string, just pass
+                                            pass
+                                    val = str(val)
                                 except:
-                                    val="{!variable not found : %s}", var
+                                    val="{!variable not found : %s}" % var
                                 expr = expr.replace(var.join(("{","}")), val )
                         if predicate :
                             # an internal struct has been found so add a new node if not ye done
