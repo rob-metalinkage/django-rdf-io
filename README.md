@@ -36,14 +36,14 @@ NB - TODO a way to force this to happen automatically - needs to happen after bo
 
 
 ## Usage
-	1) Define mappings for your target models using the admin interface $SERVER/admin/rdf_io
-	2) To create an online resource use 
+1) Define mappings for your target models using the admin interface $SERVER/admin/rdf_io
+2) To create an online resource use 
 		`{SERVER_URL}/rdf_io/to_rdf/{model_name}/id/{model_id}`
 		`{SERVER_URL}/rdf_io/to_rdf/{model_name}/key/{model_natural_key}`
-	3) To create and publish to the configured RDF store 
+3) To create and publish to the configured RDF store 
 		`{SERVER_URL}/rdf_io/pub_rdf/{model_name}/{model_id}`
 		(note that this will happen automatically on object save if an object mapping is defined)
-	4) To republish all objects for a set of django models
+4) To republish all objects for a set of django models
 		`{SERVER_URL}/rdf_io/sync_remote/{model_name}[,{model_name}]*`
 	
 NOTE: for the 	/rdf_io/to_rdf/{model_name}/key/{model_natural_key} to work the target model must define a manage with a get_by_natural_key method that takes a unique single term - such as a uri - note this will allow use of CURIES such as myns:myterm where the prefix is registered as a namespace in the RDF_IO space. If a CURIE is detected, then RDF_IO will try to match first as a string, then expand to a full URI and match.
@@ -67,6 +67,8 @@ related_model_expr = model_name(\({property}\))?
 
 
 filter = (field(!)?=literal)((,| AND )field(!)?=literal)* | literal((,| OR )literal)*
+```
+
 Notes:
 * filters on related models will be evaluated within the database using django filters, filters on property values will be performed during serialisation.
 
