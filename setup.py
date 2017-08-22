@@ -28,7 +28,8 @@ setup(
     #download_url='git://github.com/quinode/django-skosxl.git',
     zip_safe=False,
     install_requires = ['rdflib>=4.0',
-                        'rdflib-jsonld'
+                        'rdflib-jsonld',
+                        'requests'
                         ]
 
 )
