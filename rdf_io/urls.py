@@ -1,9 +1,9 @@
-from django.conf.urls import patterns, include, url
+from django.conf.urls import url
 from .views import to_rdfbyid,to_rdfbykey, pub_rdf, sync_remote,ctl_signals
 from django.contrib import admin
 admin.autodiscover()
 
-urlpatterns = patterns('',
+urlpatterns = [
     # Examples:
     # url(r'^$', 'rdf_io.views.home', name='home'),
     # url(r'^blog/', include('blog.urls')),
@@ -13,4 +13,4 @@ urlpatterns = patterns('',
     url(r'sync_remote/(?P<models>[^\/]+)$', sync_remote, name='sync_remote'),
     url(r'ctl_signals/(?P<cmd>[^\/]+)$', ctl_signals, name='ctl_signals'),
     # url(r'^admin/', include(admin.site.urls)),
-)
+]
