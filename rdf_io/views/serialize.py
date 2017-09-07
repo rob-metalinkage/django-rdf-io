@@ -149,7 +149,7 @@ def pub_rdf(request,model,id):
     # ok so object exists and is mappable, better get down to it..
 
     try:
-        rdfstore = _get_rdfstore(model,name=request.GET.get('rdfstore') )
+        rdfstore = get_rdfstore(model,name=request.GET.get('rdfstore') )
     except:
         return  HttpResponse("RDF store not configured", status=410 )
     
@@ -157,7 +157,7 @@ def pub_rdf(request,model,id):
 
     return HttpResponse("Server reports %s" % result.content,status=result.status_code )
     
-def _get_rdfstore(model, name=None ):
+def get_rdfstore(model, name=None ):
     # now get the remote store mappings 
     
     if name :
@@ -184,7 +184,7 @@ def _get_rdfstore(model, name=None ):
 def publish(obj, model, oml, rdfstore ):
       
     if not rdfstore:
-        rdfstore = _get_rdfstore(model,None)
+        rdfstore = get_rdfstore(model,None)
         
     gr = Graph()
 #    import pdb; pdb.set_trace()

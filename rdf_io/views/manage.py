@@ -1,6 +1,7 @@
 # # -*- coding:utf-8 -*-
 from django.shortcuts import render_to_response, redirect
 from rdf_io.models import ObjectMapping,Namespace,AttributeMapping,EmbeddedMapping, ObjectType, getattr_path, apply_pathfilter, expand_curie, dequote
+from rdf_io.views import get_rdfstore,publish
 from django.template import RequestContext
 from django.contrib.contenttypes.models import ContentType
 from django.conf import settings
@@ -24,10 +25,13 @@ from rdflib import Graph,namespace
 from rdflib.term import URIRef, Literal
 from rdflib.namespace import NamespaceManager,RDF
 
-
+import json
 
 import logging
 logger = logging.getLogger(__name__)
+
+def show_config(request) :
+    return HttpResponse(json.dumps( settings.RDFSTORE ))
 
 def sync_remote(request,models):
     """
@@ -46,9 +50,9 @@ def sync_remote(request,models):
             raise Http404("No such model found")
 
         try:
-            rdfstore = _get_rdfstore(model,name=request.GET.get('rdfstore') )
-        except:
-            return  HttpResponse("RDF store not configured", status=410 )
+            rdfstore = get_rdfstore(model,name=request.GET.get('rdfstore') )
+        except Exception as e:
+            return  HttpResponse("RDF store not configured for model %s threw %s"  % (model,e) , status=410 )
 
         do_sync_remote( model, ct , rdfstore )
     return HttpResponse("sync successful for {}".format(models), status=200)
