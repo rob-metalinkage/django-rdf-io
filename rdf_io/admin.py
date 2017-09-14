@@ -41,6 +41,7 @@ class AttributeMappingAdmin(admin.ModelAdmin):
         
 class EmbeddedMappingAdmin(admin.ModelAdmin):
     pass
+
     
 class NamespaceAdmin(admin.ModelAdmin):
     list_display = ('uri','prefix','notes')
@@ -49,6 +50,8 @@ class NamespaceAdmin(admin.ModelAdmin):
     #list_editable = ('name','slug')
     search_fields = ['uri','prefix']    
 
+class ImportedResourceAdmin(admin.ModelAdmin):
+    pass
     
 admin.site.register(Namespace, NamespaceAdmin)  
 admin.site.register(GenericMetaProp,GenericMetaPropAdmin)
@@ -56,3 +59,4 @@ admin.site.register(ObjectType, ObjectTypeAdmin)
 admin.site.register(ObjectMapping, ObjectMappingAdmin)
 admin.site.register(AttributeMapping, AttributeMappingAdmin)
 admin.site.register(EmbeddedMapping, EmbeddedMappingAdmin)
+admin.site.register(ImportedResource, ImportedResourceAdmin)

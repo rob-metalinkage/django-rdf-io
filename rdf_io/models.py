@@ -1,4 +1,6 @@
 from django.db import models
+from django.conf import settings
+
 from django.utils.translation import ugettext_lazy as _
 # for django 1.7 +
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -12,6 +14,8 @@ except:
     from django.db.models.fields.related_descriptors import ForwardManyToOneDescriptor as ReverseSingleRelatedObjectDescriptor
 
 import itertools
+import os
+import rdflib
 
 # helpers
 def getattr_path(obj,path) :
@@ -376,7 +380,7 @@ class ObjectMapping(models.Model):
     auto_push = models.BooleanField(_(u'auto_push'),help_text=_(u'set this to push updates to these object to the RDF store automatically'))
     id_attr = models.CharField(_(u'ID Attribute'),help_text=_(u'for nested attribute use syntax a.b.c'),blank=False,max_length=250,editable=True)
     target_uri_expr = EXPR_Field(_(u'target namespace expression'), blank=False,editable=True)
-    obj_type = models.ManyToManyField(ObjectType,null=True, blank=True, help_text=_(u'set this to generate a object rdf:type X statement' ))
+    obj_type = models.ManyToManyField(ObjectType, help_text=_(u'set this to generate a object rdf:type X statement' ))
     filter = FILTER_Field(_(u'Filter'), null=True, blank=True ,editable=True)
     def natural_key(self):
         return self.name    
@@ -410,3 +414,52 @@ class EmbeddedMapping(models.Model):
     
     def __unicode__(self):
         return ( ' '.join(('struct:',self.attr, self.predicate )))
+
+class ImportedResource(models.Model):
+    TYPE_RULE='RULE'
+    TYPE_MODEL='CLASS'
+    TYPE_INSTANCE='INSTANCE'
+    TYPE_QUERY='QUERY'
+    TYPE_VALIDATION='VALID'
+    TYPE_CHOICES = (
+      ( TYPE_RULE, 'Entailment rule (SPIN, SHACL, SKWRL etc)'),
+      ( TYPE_MODEL, 'Class model - RDFS or OWL' ),
+      ( TYPE_INSTANCE, 'Instance data - SKOS etc' ),
+      ( TYPE_QUERY, 'Query template - SPARQL - for future use' ),
+      ( TYPE_VALIDATION, 'Validation rule - for future use' ), 
+    )
+    def _get_repo_choices():
+       return ( ( settings.RDFSTORE['default']['server'], 'Default' ), )
+       
+    resource_type=models.CharField(choices=TYPE_CHOICES,max_length=10,
+       help_text='Determines the post processing applied to the uploaded file')   
+    target_repo=models.CharField(choices=_get_repo_choices(), max_length=500,help_text='Leave blank ', blank=True)
+    description = models.CharField(max_length=255, blank=True)
+    file = models.FileField(upload_to='resources/',blank=True)
+    remote = models.URLField(max_length=2000,blank=True) 
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    # add per user details?
+ 
+    
+#    def clean(self):
+#        import pdb; pdb.set_trace()
+        
+    def delete(self,*args,**kwargs):
+        if os.path.isfile(self.file.path):
+            os.remove(self.file.path)
+
+        super(ImportedResource, self).delete(*args,**kwargs)
+    
+    def save(self,*args,**kwargs):  
+        print "push out to t3" 
+        super(ImportedResource, self).save(*args,**kwargs)
+    
+    def get_graph(self):
+        graph = rdflib.Graph()
+        if self.file :
+            format = rdflib.util.guess_format(self.file.name)
+            return  graph.parse(self.file.name,  format=format )
+        elif self.remote :
+            format = rdflib.util.guess_format(self.remote.value)
+            return  graph.parse(self.remote.value,  format=format )
+        return None           
