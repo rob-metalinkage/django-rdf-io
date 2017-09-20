@@ -286,7 +286,7 @@ def push_to_store(binding,  model, obj, gr ):
             raise  RDFConfigNotFoundException("Cant locate appropriate repository configuration"  )
     rdfstore = { 'server_api' : binding.service_api , 'server' : binding.service_url , 'target' : binding.resource }
  
-    resttgt = "".join( ( rdfstore['server'],_resolveTemplate(rdfstore['target'], model, obj ) ))  
+    resttgt = _resolveTemplate("".join( ( rdfstore['server'],rdfstore['target'])), model, obj )   
 
     if binding.service_api == "RDF4JREST" :
         return _rdf4j_push(rdfstore, resttgt, model, obj, gr )
@@ -347,11 +347,18 @@ def _resolveTemplate(template, model, obj) :
     vals = { 'model' : model }
     for (literal,param,repval,conv) in Formatter().parse(template) :
         if param and param != 'model' :
-            try:
-                vals[param] = iter(getattr_path(obj,param)).next()
-            except:
-                if param == 'slug'  :
-                    vals[param] = obj.id
+            if( param[0] == '_' ) :
+                val = ConfigVar.getval(param[1:])
+                if val:
+                    vals[param] = val
+                else:
+                    raise Exception( "template references unset ConfigVariable %s" % param[1:])
+            else:
+                try:
+                    vals[param] = iter(getattr_path(obj,param)).next()
+                except:
+                    if param == 'slug'  :
+                        vals[param] = obj.id
     
     return template.format(**vals)
 
@@ -484,7 +491,7 @@ class ObjectMapping(models.Model):
     def __unicode__(self):              # __unicode__ on Python 2
         return self.name 
  
-
+ 
 class AttributeMapping(models.Model):
     """
         records a mapping from an object mapping that defines a relation from the object to a value using a predicate
@@ -510,6 +517,18 @@ class EmbeddedMapping(models.Model):
     
     def __unicode__(self):
         return ( ' '.join(('struct:',self.attr, self.predicate )))
+
+class ConfigVar(models.Model):
+    """ Sets a configuration variable for ServiceBindings templates """
+    var=models.CharField(max_length=16, null=False, blank=False , verbose_name='Variable name')
+    value=models.CharField(max_length=255, null=False, blank=True , verbose_name='Variable value')
+    
+    @staticmethod
+    def getval(var):
+        try:
+            return ConfigVar.objects.filter(var=var).first().value
+        except:
+            return None
 
 class ServiceBinding(models.Model):
     """ Binds object mappings to a RDF handling service 
@@ -557,10 +576,10 @@ class ServiceBinding(models.Model):
     title = models.CharField(max_length=255, blank=False, default='' )
  
     description = models.TextField(max_length=1000, null=True, blank=True)
-    
     binding_type=models.CharField(max_length=16,choices=BINDING_CHOICES, default=PERSIST_REPLACE, help_text='Choose the role of service')
     service_api = models.CharField(max_length=16,choices=API_CHOICES, help_text='Choose the API type of service')
     service_url = models.CharField(max_length=1000, verbose_name='service url template', help_text='Parameterised service url - {var} where var is an attribute of the object type being mapped (including django nested attributes using a__b syntax) or $model for the short model name')
+
     resource = models.CharField(max_length=1000, verbose_name='resource path', help_text='Parameterised path to target resource - using the target service API syntax')
     object_mapping = models.ManyToManyField(ObjectMapping, verbose_name='Object mappings service applies to')
     # use_as_default = models.BooleanField(verbose_name='Use by default', help_text='Set this flag to use this by default')

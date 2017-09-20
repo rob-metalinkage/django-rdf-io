@@ -1,8 +1,16 @@
 # rdf-io
 
-Simple RDF serialiser/deserialiser to support synching a django model with an external triple-store, and an app to manage the configuration elements needed to configure such serialisation recipes.
-(why an app - because we may want to take some subset of content and push it out as RDF) 
+Utilities to link Django to RDF stores and inferencers.
 
+Why: Allows semantic data models and rules to be used to generate rich views of content, and expose standardised access and query interfaces - such as SPARQL and the Linked Data Platform.  Conversely, allow use of Django to manage content in RDF stores :-)
+
+## Features
+* RDF serializer driven by editable mapping rules
+* Configureable ServiceBindings to RDF store APIs for different CRUD and inferencing tasks
+* RDF source load and push to designated RDF store
+* chainable inferencing support and persistence handling
+* Extensible to support specific information models - such as SKOS
+* Configurable metadata properties for arbitrary Django objects.
 RDF_IO has initial data that loads up common W3C namespaces and prefixes ready for use (OWL, RDF, DCAT) 
 
 ## installation
@@ -15,10 +23,12 @@ pip install -e (where you put it)
 in your master django project:
 * add 'rdf_io' to the INSTALLED_APPS  in settings.py
 * add    ` url(r"^rdf_io/", include('rdf_io.urls'))`  to urls.py
-* define settings for RDFSTORE, using the syntax here: 
+* optionally define setting for RDFSERVER and RDFSERVER_API
+* run manage.py makemigrations
+* run manage.py migrate
 
 ## Automated publishing of updated to RDF
-This is really only gauranteed for pushing additions and updates - deletions are not handled, although updates will tend to replace statements.
+This is really only guaranteed for pushing additions and updates - deletions are not handled, although updates will tend to replace statements.
 
 ### on startup to enable (necessary after django-reload)
 NB - TODO a way to force this to happen automatically - needs to happen after both RDF_IO and the target models are installed, so cant go in initialisation for either model.
@@ -36,17 +46,49 @@ NB - TODO a way to force this to happen automatically - needs to happen after bo
 
 
 ## Usage
+
+### Optional RDF store configuration
+0) Set up any target RDF stores (currently supported are the LDP API and RDF4J/Apache Sesame API) - note RDF_IO can be used to import and serialise django objects as RDF without any RDF stores, and different RDF stores can be used for different objects
+1) Configure variables for use in setting up ServiceBindings to RDF stores and inferencing engines
+2) Set up ServiceBindings for your target stores (via the admin interface or migrations)
+3) Pre-load any static data and rules required by your reasoner (e.g. SHACL) - or set up migrations to load these using ImportedResource bound to appropriate ServiceBindings
+
+### Basic RDF serialisation
 1) Define mappings for your target models using the admin interface $SERVER/admin/rdf_io
 2) To create an online resource use 
 		`{SERVER_URL}/rdf_io/to_rdf/{model_name}/id/{model_id}`
 		`{SERVER_URL}/rdf_io/to_rdf/{model_name}/key/{model_natural_key}`
-3) To create and publish to the configured RDF store 
+		
+### RDF publishing		
+1) Configure one or more ServiceBindings and attach to the relevant ObjectMapping
+2) To publish a specific object to the configured RDF store 
 		`{SERVER_URL}/rdf_io/pub_rdf/{model_name}/{model_id}`
 		(note that this will happen automatically on object save if an object mapping is defined)
-4) To republish all objects for a set of django models
+3) To republish all objects for a set of django models
 		`{SERVER_URL}/rdf_io/sync_remote/{model_name}[,{model_name}]*`
-	
+
+### Inferencing
+Inferencing allows RDF based reasoning to generate richer views of inter-related data, and potentially derive a range of additional knowledge. This can all be done inside custom logic, but RDF_IO allows standards such as SHACL etc to be used to capture this and avoids hard-coding and hiding all these rules.
+
+when an object is saved, any enabled inferencing ServiceBindings will be applied before saving (stores may invoke loaded rules post-save)
+
+1) Set up a RDF Inferencer - note this may be a matter of enabling inferencing on the default store, or setting up a new store 
+2) Create service bindings for inferencing - these may be chained using Next_service 
+3) Make sure that the inferencing store is cleared of temporary data - using an appropriate PERSISTENCE_DELETE ServiceBinding as a final step in the chain 
+
+
+		
 NOTE: for the 	/rdf_io/to_rdf/{model_name}/key/{model_natural_key} to work the target model must define a manage with a get_by_natural_key method that takes a unique single term - such as a uri - note this will allow use of CURIES such as myns:myterm where the prefix is registered as a namespace in the RDF_IO space. If a CURIE is detected, then RDF_IO will try to match first as a string, then expand to a full URI and match.
+
+### Object Mappings
+Mappings to RDF are done for Django models. Each mapping consists of:
+1) an identifier mapping to generate the URI for the object
+2) a set of AttributeMapping elements that map a list of values to a RDF predicate
+3) a set of EmbeddedMapping that map a list of values to complex object property (optionally wrapped in a blank node)
+4) a filter to limit the set of objects the mapping applies to
+
+More than one object mapping may exist for a Django model. The RDF graph is the union of all the configured Object Mapping outputs.
+(Note that a ServiceBinding may be bound to a specific mapping, but the default behaviour is for this to be used to find all ServiceBindings for a gioven django modeltype - and they all get the composite graph (this may be changed to supported publishing different graphs to different RDf stores in future.)
 
 ### Mapping syntax
 Mapping is non trivial - because the elements of your model may need to extracted from related models 
@@ -83,19 +125,18 @@ Notes:
 semrelation(origin_concept)[rel_type='1'].target_concept
  
 ## Status: 
-alpha, functionally complete initial capability:
+beta, functionally complete initial capability:
 * TTL serialisation of a given model (for which a mapping has been registered) 
 * Publishing to remote LDP service using per-model templates to define LDP resources
 * Autoconfiguring of signals so that objects with mappings are published on post_ save
 * syc_remote method to push all objects of list of model types (push is idempotent - safe to repeat)
 * sophisticated property-chains with per-level filter options in attribute marmotta
 * tested in context of geonode project under django 1.6
+* tested against django 1.8.6 and 1.11
 
 todo:
 * implement global filters for object mappings (to limit mappings to a subset)
 * set up signals and methods to delete objects from remote store
-* make settings more sophisticated so default target resource patterns can be inherited from app models
-* test against django 1.7+
 
 ## API
 
@@ -114,8 +155,10 @@ gr.serialize(format="turtle")
 
 `{SERVER_URL}/rdf_io/to_rdf/{model_name}/{model_id}`
 
-### Configuring an external 3-store
 
+
+
+## Deprecated 
 ## Marmotta LDP
 * deploy marmotta.war and configure as per Marmotta instructions
 * define resource container patterns for different models
