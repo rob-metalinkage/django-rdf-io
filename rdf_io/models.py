@@ -13,9 +13,13 @@ try:
 except:
     from django.db.models.fields.related_descriptors import ForwardManyToOneDescriptor as ReverseSingleRelatedObjectDescriptor
 
+import requests
 import itertools
 import os
 import rdflib
+
+from string import Formatter
+
 
 # helpers
 def getattr_path(obj,path) :
@@ -253,12 +257,104 @@ def expand_curie(value):
 def validate_urisyntax(value):
 
     if value[0:4] == 'http' :
-        URLValidator(verify_exists=False).__call__(value)
+        URLValidator().__call__(value)
     else :
         parts = value.split(":")
         if len(parts) != 2 :
             raise ValidationError('invalid syntax')
         ns = Namespace.objects.get(prefix=parts[0])
+
+class RDFConfigNotFoundException(Exception):
+    """ Cannot find a RDF publish configuration matching object """
+    pass
+
+class RDFConfigException(Exception):
+    """ RDF store binding configuration exception"""
+    pass
+
+class RDFStoreException(Exception):
+    """ RDF store response exception """
+    pass
+    
+def push_to_store(binding,  model, obj, gr ):
+    """ push an object via its serialisation rules to a store via a ServiceBinding """
+    if not binding:
+        try:
+
+            binding = ServiceBinding.get_service_binding(model,(ServiceBinding.PERSIST_CREATE,ServiceBinding.PERSIST_UPDATE,ServiceBinding.PERSIST_REPLACE))
+        except:
+            raise  RDFConfigNotFoundException("Cant locate appropriate repository configuration"  )
+    rdfstore = { 'server_api' : binding.service_api , 'server' : binding.service_url , 'target' : binding.resource }
+ 
+    resttgt = "".join( ( rdfstore['server'],_resolveTemplate(rdfstore['target'], model, obj ) ))  
+
+    if binding.service_api == "RDF4JREST" :
+        return _rdf4j_push(rdfstore, resttgt, model, obj, gr )
+    elif binding.service_api == "LDP" :
+        return _ldp_push(rdfstore, resttgt, model, obj, gr )
+    else:
+        raise RDFConfigException("Unknown server API %s" % binding.service_api  )
+
+push_to_store.RDFConfigException = RDFConfigException
+push_to_store.RDFConfigNotFoundException = RDFConfigNotFoundException
+push_to_store.RDFStoreException = RDFStoreException
+        
+def _ldp_push(rdfstore, resttgt, model, obj, gr ):
+    etag = _get_etag(resttgt)
+    headers = {'Content-Type': 'text/turtle'} 
+    if etag :
+        headers['If-Match'] = etag
+       
+    for h in rdfstore.get('headers') or [] :
+        headers[h] = _resolveTemplate( rdfstore['headers'][h], model, obj )
+    
+    result = requests.put( resttgt, headers=headers , data=gr.serialize(format="turtle"), auth=rdfstore.get('auth'))
+    #logger.info ( "Updating resource {} {}".format(resttgt,result.status_code) )
+    if result.status_code > 400 :
+#         print "Posting new resource"
+#         result = requests.post( resttgt, headers=headers , data=gr.serialize(format="turtle"))
+#        logger.error ( "Failed to publish resource {} {}".format(resttgt,result.status_code) )
+        raise RDFStoreException("Failed to publish resource {} {} : {} ".format(resttgt,result.status_code, result.content) )
+    return result 
+
+def _get_etag(uri):
+    """
+        Gets the LDP Etag for a resource if it exists
+    """
+    # could put in cache here - but for now just issue a HEAD
+    result = requests.head(uri)
+    return result.headers.get('ETag')
+        
+def _rdf4j_push(rdfstore, resttgt, model, obj, gr ):
+    #import pdb; pdb.set_trace()
+    headers = {'Content-Type': 'application/x-turtle;charset=UTF-8'} 
+  
+    for h in rdfstore.get('headers') or [] :
+        headers[h] = _resolveTemplate( rdfstore['headers'][h], model, obj )
+    
+    result = requests.put( resttgt, headers=headers , data=gr.serialize(format="turtle"))
+#    logger.info ( "Updating resource {} {}".format(resttgt,result.status_code) )
+    if result.status_code > 400 :
+#         print "Posting new resource"
+#         result = requests.post( resttgt, headers=headers , data=gr.serialize(format="turtle"))
+#        logger.error ( "Failed to publish resource {} {}".format(resttgt,result.status_code) )
+         raise RDFStoreException ("Failed to publish resource {} {}".format(resttgt,result.status_code ) )
+    return result 
+
+    
+def _resolveTemplate(template, model, obj) :
+    
+    vals = { 'model' : model }
+    for (literal,param,repval,conv) in Formatter().parse(template) :
+        if param and param != 'model' :
+            try:
+                vals[param] = iter(getattr_path(obj,param)).next()
+            except:
+                if param == 'slug'  :
+                    vals[param] = obj.id
+    
+    return template.format(**vals)
+
     
 class CURIE_Field(models.CharField):
     """
@@ -415,6 +511,73 @@ class EmbeddedMapping(models.Model):
     def __unicode__(self):
         return ( ' '.join(('struct:',self.attr, self.predicate )))
 
+class ServiceBinding(models.Model):
+    """ Binds object mappings to a RDF handling service 
+
+        Services may perform several roles:
+        * Validation
+        * INFERENCE
+        * Persistence
+        
+        Bindings may be controlled by status variables in the objects being bound - for example draft content published to a separate directory.
+        
+        Bindings, if present for an object, override system defaults.
+        
+        Services may be chained with an exception handling clause. API will provide options for choosing starting point of chain and whether to automatically follow chain or report and pause.
+    """
+    VALIDATION='VALIDATION'
+    INFERENCE='INFERENCE'
+    PERSIST_CREATE='PERSIST_CREATE'
+    PERSIST_REPLACE='PERSIST_REPLACE'
+    PERSIST_UPDATE='PERSIST_UPDATE'
+    PERSIST_PURGE='PERSIST_PURGE'
+    DEBUG_SHOW='SHOW - show encoded content or previous service errors'
+    BINDING_CHOICES = (
+      ( VALIDATION, 'VALIDATION - Performs validation check'),
+      ( INFERENCE, 'INFERENCE - The entailed response replaces the default encoding in downstream services' ),
+      ( PERSIST_CREATE, 'PERSIST_CREATE - A new resource is created only if not present in the persistence store' ),
+      ( PERSIST_REPLACE, 'PERSIST_REPLACE -The resource and its properties are replaced in the persistence store' ),
+      ( PERSIST_UPDATE, 'PERSIST_UPDATE - The resource and its properties are added to the persistence store' ), 
+      ( PERSIST_PURGE, 'PERSIST_PURGE - The resource and its properties are deleted from the persistence store' ), 
+    )
+    RDF4JREST = 'RDF4JREST'
+    LDP = 'LDP'
+    SHACLAPI = 'SHACLAPI'
+    SPARQL = 'SPARQL'
+    GIT = 'GIT'
+    API_CHOICES=(
+        (RDF4JREST,'RDF4JREST - a.k.a Sesame'),
+        (LDP,'LDP: Linked Data Platform'),
+        (GIT,'GIT'),
+        (SHACLAPI,'SHACL service'),
+        (SPARQL,'SPARQL endpoint'),
+    )
+    API_TEMPLATES = { RDF4JREST : "http://localhost:8080/rdf4j-server/repositories/myrepo" }
+
+    title = models.CharField(max_length=255, blank=False, default='' )
+ 
+    description = models.TextField(max_length=1000, null=True, blank=True)
+    
+    binding_type=models.CharField(max_length=16,choices=BINDING_CHOICES, default=PERSIST_REPLACE, help_text='Choose the role of service')
+    service_api = models.CharField(max_length=16,choices=API_CHOICES, help_text='Choose the API type of service')
+    service_url = models.CharField(max_length=1000, verbose_name='service url template', help_text='Parameterised service url - {var} where var is an attribute of the object type being mapped (including django nested attributes using a__b syntax) or $model for the short model name')
+    resource = models.CharField(max_length=1000, verbose_name='resource path', help_text='Parameterised path to target resource - using the target service API syntax')
+    object_mapping = models.ManyToManyField(ObjectMapping, verbose_name='Object mappings service applies to')
+    # use_as_default = models.BooleanField(verbose_name='Use by default', help_text='Set this flag to use this by default')
+
+    object_filter=models.TextField(max_length=2000, verbose_name='filter expression', help_text='A (python dict) filter on the objects that this binding applies to', blank=True, null=True)
+    next_service=models.ForeignKey('ServiceBinding', verbose_name='Next service', blank=True, null=True)
+    on_delete_service=models.ForeignKey('ServiceBinding', related_name='on_delete',verbose_name='Deletion service', blank=True, null=True, help_text='This will be invoked on object deletion if specified, and also if the binding is "replace" - which allows for a specific pre-deletion step if not supported by the repository API natively')
+    on_fail_service=models.ForeignKey('ServiceBinding', related_name='on_fail',verbose_name='On fail service', blank=True, null=True, help_text='Overrides default failure reporting')
+
+    def __unicode__(self):
+        return self.title + "(" + self.service_api + " : " + self.service_url + ")"
+     
+    @staticmethod 
+    def get_service_binding(model,bindingtypes):
+        ct = ContentType.objects.get(model=model)
+        return ServiceBinding.objects.filter(object_mapping__content_type=ct, binding_type__in=bindingtypes).first()
+    
 class ImportedResource(models.Model):
     TYPE_RULE='RULE'
     TYPE_MODEL='CLASS'
@@ -422,36 +585,36 @@ class ImportedResource(models.Model):
     TYPE_QUERY='QUERY'
     TYPE_VALIDATION='VALID'
     TYPE_CHOICES = (
-      ( TYPE_RULE, 'Entailment rule (SPIN, SHACL, SKWRL etc)'),
+      ( TYPE_RULE, 'Rule (SPIN, SHACL, SKWRL etc)'),
       ( TYPE_MODEL, 'Class model - RDFS or OWL' ),
       ( TYPE_INSTANCE, 'Instance data - SKOS etc' ),
       ( TYPE_QUERY, 'Query template - SPARQL - for future use' ),
       ( TYPE_VALIDATION, 'Validation rule - for future use' ), 
     )
-    def _get_repo_choices():
-       return ( ( settings.RDFSTORE['default']['server'], 'Default' ), )
        
     resource_type=models.CharField(choices=TYPE_CHOICES,max_length=10,
        help_text='Determines the post processing applied to the uploaded file')   
-    target_repo=models.CharField(choices=_get_repo_choices(), max_length=500,help_text='Leave blank ', blank=True)
+    target_repo=models.ForeignKey(ServiceBinding, help_text='choose binding to optional RDF repository' , null=True, blank=True)
     description = models.CharField(max_length=255, blank=True)
     file = models.FileField(upload_to='resources/',blank=True)
-    remote = models.URLField(max_length=2000,blank=True) 
+    remote = models.URLField(max_length=2000,blank=True,verbose_name='Remote RDF source URI') 
     uploaded_at = models.DateTimeField(auto_now_add=True)
     # add per user details?
  
     
 #    def clean(self):
-#        import pdb; pdb.set_trace()
+#        import fields; pdb.set_trace()
         
     def delete(self,*args,**kwargs):
         if os.path.isfile(self.file.path):
             os.remove(self.file.path)
-
+        if self.target_repo :
+            print "TODO - delete remote resource in repo %s" % self.target_repo
         super(ImportedResource, self).delete(*args,**kwargs)
     
     def save(self,*args,**kwargs):  
-        print "push out to t3" 
+        if self.target_repo :
+            push_to_store(self.target_repo, 'ImportedResource', self, self.get_graph())
         super(ImportedResource, self).save(*args,**kwargs)
     
     def get_graph(self):
@@ -460,6 +623,15 @@ class ImportedResource(models.Model):
             format = rdflib.util.guess_format(self.file.name)
             return  graph.parse(self.file.name,  format=format )
         elif self.remote :
-            format = rdflib.util.guess_format(self.remote.value)
-            return  graph.parse(self.remote.value,  format=format )
-        return None           
+            format = rdflib.util.guess_format(self.remote)
+            return  graph.parse(self.remote,  format=format )
+        return None
+        
+
+    
+    
+    
+    
+    
+    
+    

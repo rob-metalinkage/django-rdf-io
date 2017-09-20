@@ -52,6 +52,10 @@ class NamespaceAdmin(admin.ModelAdmin):
 
 class ImportedResourceAdmin(admin.ModelAdmin):
     pass
+
+class ServiceBindingAdmin(admin.ModelAdmin) :
+    list_display = ('title', 'binding_type')
+    pass
     
 admin.site.register(Namespace, NamespaceAdmin)  
 admin.site.register(GenericMetaProp,GenericMetaPropAdmin)
@@ -60,3 +64,5 @@ admin.site.register(ObjectMapping, ObjectMappingAdmin)
 admin.site.register(AttributeMapping, AttributeMappingAdmin)
 admin.site.register(EmbeddedMapping, EmbeddedMappingAdmin)
 admin.site.register(ImportedResource, ImportedResourceAdmin)
+
+admin.site.register(ServiceBinding, ServiceBindingAdmin)

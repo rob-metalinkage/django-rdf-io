@@ -1,10 +1,11 @@
 # # -*- coding:utf-8 -*-
 from django.shortcuts import render_to_response, redirect
-from rdf_io.models import ObjectMapping,Namespace,AttributeMapping,EmbeddedMapping, ObjectType, getattr_path, apply_pathfilter, expand_curie, dequote
+from rdf_io.models import ObjectMapping,Namespace,AttributeMapping,EmbeddedMapping, ObjectType,ServiceBinding, getattr_path, apply_pathfilter, expand_curie, dequote, push_to_store
+
 from django.template import RequestContext
 from django.contrib.contenttypes.models import ContentType
 from django.conf import settings
-from string import Formatter
+
 from rdflib import BNode
 # TODO make python 3 safe!
 import urllib as u
@@ -153,8 +154,10 @@ def pub_rdf(request,model,id):
     except:
         return  HttpResponse("RDF store not configured", status=410 )
     
-    result = publish(obj, model, oml,rdfstore)
-
+    try:
+        result = publish(obj, model, oml,rdfstore)
+    except Exception as e:
+        return HttpResponse("Exception publishing remote RDF content %s" % e,status=500 )
     return HttpResponse("Server reports %s" % result.content,status=result.status_code )
     
 def get_rdfstore(model, name=None ):
@@ -183,9 +186,7 @@ def get_rdfstore(model, name=None ):
     
 def publish(obj, model, oml, rdfstore ):
       
-    if not rdfstore:
-        rdfstore = get_rdfstore(model,None)
-        
+       
     gr = Graph()
 #    import pdb; pdb.set_trace()
 #    ns_mgr = NamespaceManager(Graph())
@@ -193,75 +194,15 @@ def publish(obj, model, oml, rdfstore ):
     try:
         gr = build_rdf(gr, obj, oml, False)
     except Exception as e:
-        return  HttpResponse("Error during serialisation: " + str(e) , status=500 )
+        raise Exception("Error during serialisation: " + str(e) )
     for ns in _nslist.keys() :
         gr.namespace_manager.bind( str(ns), namespace.Namespace(str(_nslist[ns])), override=False)
     
 #    curl -X POST -H "Content-Type: text/turtle" -d @- http://192.168.56.151:8080/marmotta/import/upload?context=http://mapstory.org/def/featuretypes/gazetteer 
-    resttgt = "".join( ( rdfstore['server'],_resolveTemplate(rdfstore['target'], model, obj ) ))  
+    
+    
+    return push_to_store( None, model, obj, gr )
 
-    if rdfstore['server_api'] == "RDF4JREST" :
-        return _rdf4j_push(rdfstore, resttgt, model, obj, gr )
-    elif rdfstore['server_api'] == "LDP" :
-        return _ldp_push(rdfstore, resttgt, model, obj, gr )
-    else:
-        return  HttpResponse("Unknown server API" , status=500 )
-        
-def _ldp_push(rdfstore, resttgt, model, obj, gr ):
-    etag = _get_etag(resttgt)
-    headers = {'Content-Type': 'text/turtle'} 
-    if etag :
-        headers['If-Match'] = etag
-       
-    for h in rdfstore.get('headers') or [] :
-        headers[h] = _resolveTemplate( rdfstore['headers'][h], model, obj )
-    
-    result = requests.put( resttgt, headers=headers , data=gr.serialize(format="turtle"), auth=rdfstore.get('auth'))
-    #logger.info ( "Updating resource {} {}".format(resttgt,result.status_code) )
-    if result.status_code > 400 :
-#         print "Posting new resource"
-#         result = requests.post( resttgt, headers=headers , data=gr.serialize(format="turtle"))
-        logger.error ( "Failed to publish resource {} {}".format(resttgt,result.status_code) )
-        return HttpResponse ("Failed to publish resource {} {} : {} ".format(resttgt,result.status_code, result.content) , status = result.status_code )
-    return result 
-
-def _get_etag(uri):
-    """
-        Gets the LDP Etag for a resource if it exists
-    """
-    # could put in cache here - but for now just issue a HEAD
-    result = requests.head(uri)
-    return result.headers.get('ETag')
-        
-def _rdf4j_push(rdfstore, resttgt, model, obj, gr ):
-    #import pdb; pdb.set_trace()
-    headers = {'Content-Type': 'application/x-turtle;charset=UTF-8'} 
-  
-    for h in rdfstore.get('headers') or [] :
-        headers[h] = _resolveTemplate( rdfstore['headers'][h], model, obj )
-    
-    result = requests.put( resttgt, headers=headers , data=gr.serialize(format="turtle"))
-    logger.info ( "Updating resource {} {}".format(resttgt,result.status_code) )
-    if result.status_code > 400 :
-#         print "Posting new resource"
-#         result = requests.post( resttgt, headers=headers , data=gr.serialize(format="turtle"))
-        logger.error ( "Failed to publish resource {} {}".format(resttgt,result.status_code) )
-        return HttpResponse ("Failed to publish resource {} {}".format(resttgt,result.status_code) , status = result.status_code )
-    return result 
-
-    
-def _resolveTemplate(template, model, obj) :
-    
-    vals = { 'model' : model }
-    for (literal,param,repval,conv) in Formatter().parse(template) :
-        if param and param != 'model' :
-            try:
-                vals[param] = iter(getattr_path(obj,param)).next()
-            except:
-                if param == 'slug'  :
-                    vals[param] = obj.id
-    
-    return template.format(**vals)
  
    
 def build_rdf( gr,obj, oml, includemembers ) :  
