@@ -522,6 +522,9 @@ class ConfigVar(models.Model):
     """ Sets a configuration variable for ServiceBindings templates """
     var=models.CharField(max_length=16, null=False, blank=False , verbose_name='Variable name')
     value=models.CharField(max_length=255, null=False, blank=True , verbose_name='Variable value')
+
+    def __unicode__(self):
+        return ( ' '.join(('var:',self.var, ' = ', self.value )))
     
     @staticmethod
     def getval(var):
@@ -581,7 +584,7 @@ class ServiceBinding(models.Model):
     service_url = models.CharField(max_length=1000, verbose_name='service url template', help_text='Parameterised service url - {var} where var is an attribute of the object type being mapped (including django nested attributes using a__b syntax) or $model for the short model name')
 
     resource = models.CharField(max_length=1000, verbose_name='resource path', help_text='Parameterised path to target resource - using the target service API syntax')
-    object_mapping = models.ManyToManyField(ObjectMapping, verbose_name='Object mappings service applies to')
+    object_mapping = models.ManyToManyField(ObjectMapping, verbose_name='Object mappings service binding applies to automatically', blank=True, null=True)
     # use_as_default = models.BooleanField(verbose_name='Use by default', help_text='Set this flag to use this by default')
 
     object_filter=models.TextField(max_length=2000, verbose_name='filter expression', help_text='A (python dict) filter on the objects that this binding applies to', blank=True, null=True)
@@ -620,6 +623,8 @@ class ImportedResource(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
     # add per user details?
  
+    def __unicode__(self):
+        return ( ' '.join( filter(None,(self.resource_type,':', self.file.__unicode__(), self.remote ))))
     
 #    def clean(self):
 #        import fields; pdb.set_trace()
@@ -632,9 +637,10 @@ class ImportedResource(models.Model):
         super(ImportedResource, self).delete(*args,**kwargs)
     
     def save(self,*args,**kwargs):  
+        super(ImportedResource, self).save(*args,**kwargs)
         if self.target_repo :
             push_to_store(self.target_repo, 'ImportedResource', self, self.get_graph())
-        super(ImportedResource, self).save(*args,**kwargs)
+
     
     def get_graph(self):
         graph = rdflib.Graph()
