@@ -50,11 +50,18 @@ class NamespaceAdmin(admin.ModelAdmin):
     #list_editable = ('name','slug')
     search_fields = ['uri','prefix']    
 
+    
+class ConfigVarAdmin(admin.ModelAdmin):
+    pass
+    
 class ImportedResourceAdmin(admin.ModelAdmin):
+#    list_display = ('file', 'remote', 'resource_type')
+    search_fields = ['description','file','remote']    
     pass
 
 class ServiceBindingAdmin(admin.ModelAdmin) :
     list_display = ('title', 'binding_type')
+    search_fields = ['title','binding_type']    
     pass
     
 admin.site.register(Namespace, NamespaceAdmin)  
@@ -66,3 +73,4 @@ admin.site.register(EmbeddedMapping, EmbeddedMappingAdmin)
 admin.site.register(ImportedResource, ImportedResourceAdmin)
 
 admin.site.register(ServiceBinding, ServiceBindingAdmin)
+admin.site.register(ConfigVar, ConfigVarAdmin)
