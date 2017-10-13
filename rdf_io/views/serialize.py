@@ -1,6 +1,8 @@
 # # -*- coding:utf-8 -*-
 from django.shortcuts import render_to_response, redirect
-from rdf_io.models import ObjectMapping,Namespace,AttributeMapping,EmbeddedMapping, ObjectType,ServiceBinding, getattr_path, apply_pathfilter, expand_curie, dequote, push_to_store
+from rdf_io.models import ObjectMapping,Namespace,AttributeMapping,EmbeddedMapping, ObjectType,ServiceBinding, getattr_path, apply_pathfilter, expand_curie, dequote
+
+from rdf_io.protocols import push_to_store,inference,rdf_delete
 
 from django.template import RequestContext
 from django.contrib.contenttypes.models import ContentType
@@ -200,10 +202,24 @@ def publish(obj, model, oml, rdfstore ):
     
 #    curl -X POST -H "Content-Type: text/turtle" -d @- http://192.168.56.151:8080/marmotta/import/upload?context=http://mapstory.org/def/featuretypes/gazetteer 
     
+    for inferencer in ServiceBinding.get_service_bindings(model,(ServiceBinding.INFERENCE,) ) :
+        newgr = inference(model, obj, inferencer, gr)
+        next_binding = inferencer.next_service
+        while next_binding :
+            if next_binding.binding_type == ServiceBinding.INFERENCE :
+                newgr = inference(model, obj, next_binding, newgr)
+            elif next_binding.binding_type in ( ServiceBinding.PERSIST_UPDATE, ServiceBinding.PERSIST_REPLACE, ServiceBinding.PERSIST_CREATE ) :
+                push_to_store( next_binding, model, obj, newgr )
+            elif next_binding.binding_type == ServiceBinding.PERSIST_PURGE  :
+               rdf_delete( next_binding, model, obj )
+            else:
+                raise Exception( "service type not supported when post processing inferences")
+            next_binding = next_binding.next_service
+
     
     return push_to_store( None, model, obj, gr )
 
- 
+   
    
 def build_rdf( gr,obj, oml, includemembers ) :  
 

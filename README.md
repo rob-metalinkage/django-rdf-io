@@ -60,11 +60,13 @@ NB - TODO a way to force this to happen automatically - needs to happen after bo
 		`{SERVER_URL}/rdf_io/to_rdf/{model_name}/key/{model_natural_key}`
 		
 ### RDF publishing		
-1) Configure one or more ServiceBindings and attach to the relevant ObjectMapping
-2) To publish a specific object to the configured RDF store 
+1) Configure one or more ServiceBindings and attach to the relevant ObjectMapping (if updates to that Object are to be published to RDF store - otherwise ServiceBindings can be directly bound to individual ImportedResource objects)
+  NOTE: A service binding of type VALIDATION will cause checks to be performed - and on failure will abort the service chain and invoke on_fail bindings (not yet implemented) 
+  NOTE: An service binding of type INFERENCING will augment the data to be stored, but not save it. It should be chained to PERSIST binding(s).
+2) To publish a specific object to the configured RDF store:
 		`{SERVER_URL}/rdf_io/pub_rdf/{model_name}/{model_id}`
 		(note that this will happen automatically on object save if an object mapping is defined)
-3) To republish all objects for a set of django models
+3) To republish all objects for a set of django models:
 		`{SERVER_URL}/rdf_io/sync_remote/{model_name}[,{model_name}]*`
 
 				
@@ -76,9 +78,10 @@ Inferencing allows RDF based reasoning to generate richer views of inter-related
 
 when an object is saved, any enabled inferencing ServiceBindings will be applied before saving (stores may invoke loaded rules post-save)
 
-1) Set up a RDF Inferencer - note this may be a matter of enabling inferencing on the default store, or setting up a new store 
-2) Create service bindings for inferencing - these may be chained using Next_service 
-3) Make sure that the inferencing store is cleared of temporary data - using an appropriate PERSISTENCE_DELETE ServiceBinding as a final step in the chain 
+1) Set up a RDF Inferencer - note this may be a matter of enabling inferencing on the default store, or setting up a new store. If rules cannot safely co-exist, then multiple inferencing stores may be configured.
+2) Load inferencing rules to the Inferencer (optionally using ImportedResource objects and PERSIST_REPLACE service bindings) 
+3) Create service bindings for inferencing - these may be chained using Next_service 
+4) Make sure that the inferencing store is cleared of temporary data - using an appropriate PERSISTENCE_DELETE ServiceBinding as a final step in the chain 
 
 NOTE: Inferencing rules may need to be more complex if a separate inferencing store is set up, but some of the data needed for inferencing resides in the main target repository. Using SPIN, this leads to constructs like:
 

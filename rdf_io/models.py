@@ -18,8 +18,9 @@ import itertools
 import os
 import rdflib
 
-from string import Formatter
 
+
+from rdf_io.protocols import *
 
 # helpers
 def getattr_path(obj,path) :
@@ -264,104 +265,6 @@ def validate_urisyntax(value):
             raise ValidationError('invalid syntax')
         ns = Namespace.objects.get(prefix=parts[0])
 
-class RDFConfigNotFoundException(Exception):
-    """ Cannot find a RDF publish configuration matching object """
-    pass
-
-class RDFConfigException(Exception):
-    """ RDF store binding configuration exception"""
-    pass
-
-class RDFStoreException(Exception):
-    """ RDF store response exception """
-    pass
-    
-def push_to_store(binding,  model, obj, gr ):
-    """ push an object via its serialisation rules to a store via a ServiceBinding """
-    if not binding:
-        try:
-
-            binding = ServiceBinding.get_service_binding(model,(ServiceBinding.PERSIST_CREATE,ServiceBinding.PERSIST_UPDATE,ServiceBinding.PERSIST_REPLACE))
-        except:
-            raise  RDFConfigNotFoundException("Cant locate appropriate repository configuration"  )
-    rdfstore = { 'server_api' : binding.service_api , 'server' : binding.service_url , 'target' : binding.resource }
- 
-    resttgt = _resolveTemplate("".join( ( rdfstore['server'],rdfstore['target'])), model, obj )   
-
-    if binding.service_api == "RDF4JREST" :
-        return _rdf4j_push(rdfstore, resttgt, model, obj, gr )
-    elif binding.service_api == "LDP" :
-        return _ldp_push(rdfstore, resttgt, model, obj, gr )
-    else:
-        raise RDFConfigException("Unknown server API %s" % binding.service_api  )
-
-push_to_store.RDFConfigException = RDFConfigException
-push_to_store.RDFConfigNotFoundException = RDFConfigNotFoundException
-push_to_store.RDFStoreException = RDFStoreException
-        
-def _ldp_push(rdfstore, resttgt, model, obj, gr ):
-    etag = _get_etag(resttgt)
-    headers = {'Content-Type': 'text/turtle'} 
-    if etag :
-        headers['If-Match'] = etag
-       
-    for h in rdfstore.get('headers') or [] :
-        headers[h] = _resolveTemplate( rdfstore['headers'][h], model, obj )
-    
-    result = requests.put( resttgt, headers=headers , data=gr.serialize(format="turtle"), auth=rdfstore.get('auth'))
-    #logger.info ( "Updating resource {} {}".format(resttgt,result.status_code) )
-    if result.status_code > 400 :
-#         print "Posting new resource"
-#         result = requests.post( resttgt, headers=headers , data=gr.serialize(format="turtle"))
-#        logger.error ( "Failed to publish resource {} {}".format(resttgt,result.status_code) )
-        raise RDFStoreException("Failed to publish resource {} {} : {} ".format(resttgt,result.status_code, result.content) )
-    return result 
-
-def _get_etag(uri):
-    """
-        Gets the LDP Etag for a resource if it exists
-    """
-    # could put in cache here - but for now just issue a HEAD
-    result = requests.head(uri)
-    return result.headers.get('ETag')
-        
-def _rdf4j_push(rdfstore, resttgt, model, obj, gr ):
-    #import pdb; pdb.set_trace()
-    headers = {'Content-Type': 'application/x-turtle;charset=UTF-8'} 
-  
-    for h in rdfstore.get('headers') or [] :
-        headers[h] = _resolveTemplate( rdfstore['headers'][h], model, obj )
-    
-    result = requests.put( resttgt, headers=headers , data=gr.serialize(format="turtle"))
-#    logger.info ( "Updating resource {} {}".format(resttgt,result.status_code) )
-    if result.status_code > 400 :
-#         print "Posting new resource"
-#         result = requests.post( resttgt, headers=headers , data=gr.serialize(format="turtle"))
-#        logger.error ( "Failed to publish resource {} {}".format(resttgt,result.status_code) )
-         raise RDFStoreException ("Failed to publish resource {} {}".format(resttgt,result.status_code ) )
-    return result 
-
-    
-def _resolveTemplate(template, model, obj) :
-    
-    vals = { 'model' : model }
-    for (literal,param,repval,conv) in Formatter().parse(template) :
-        if param and param != 'model' :
-            if( param[0] == '_' ) :
-                val = ConfigVar.getval(param[1:])
-                if val:
-                    vals[param] = val
-                else:
-                    raise Exception( "template references unset ConfigVariable %s" % param[1:])
-            else:
-                try:
-                    vals[param] = iter(getattr_path(obj,param)).next()
-                except:
-                    if param == 'slug'  :
-                        vals[param] = obj.id
-    
-    return template.format(**vals)
-
     
 class CURIE_Field(models.CharField):
     """
@@ -558,9 +461,9 @@ class ServiceBinding(models.Model):
       ( VALIDATION, 'VALIDATION - Performs validation check'),
       ( INFERENCE, 'INFERENCE - The entailed response replaces the default encoding in downstream services' ),
       ( PERSIST_CREATE, 'PERSIST_CREATE - A new resource is created only if not present in the persistence store' ),
-      ( PERSIST_REPLACE, 'PERSIST_REPLACE -The resource and its properties are replaced in the persistence store' ),
-      ( PERSIST_UPDATE, 'PERSIST_UPDATE - The resource and its properties are added to the persistence store' ), 
-      ( PERSIST_PURGE, 'PERSIST_PURGE - The resource and its properties are deleted from the persistence store' ), 
+      ( PERSIST_REPLACE, 'PERSIST_REPLACE - (e.g. HTTP PUT) The resource and its properties are replaced in the persistence store' ),
+      ( PERSIST_UPDATE, 'PERSIST_UPDATE - (e.g. HTTP POST) The resource and its properties are added to the persistence store' ), 
+      ( PERSIST_PURGE, 'PERSIST_PURGE - (e.g. HTTP DELETE) The resource and its properties are deleted from the persistence store' ), 
     )
     RDF4JREST = 'RDF4JREST'
     LDP = 'LDP'
@@ -583,8 +486,9 @@ class ServiceBinding(models.Model):
     service_api = models.CharField(max_length=16,choices=API_CHOICES, help_text='Choose the API type of service')
     service_url = models.CharField(max_length=1000, verbose_name='service url template', help_text='Parameterised service url - {var} where var is an attribute of the object type being mapped (including django nested attributes using a__b syntax) or $model for the short model name')
 
-    resource = models.CharField(max_length=1000, verbose_name='resource path', help_text='Parameterised path to target resource - using the target service API syntax')
-    object_mapping = models.ManyToManyField(ObjectMapping, verbose_name='Object mappings service binding applies to automatically', blank=True, null=True)
+    resource = models.CharField(max_length=1000, verbose_name='resource path', help_text='Parameterised path to target resource to be persisted - using the target service API syntax - e.g. /statements?context=<{uri}> for a RDF4J named graph.', default="/statements?context=<uri>")
+    inferenced_resource = models.CharField(max_length=1000, verbose_name='generated resource', help_text='Parameterised path to intermediate resource - using the target service API syntax.  If this is an inferencing service then this will be the resource identifier for the additional triples generated by the inferencing rules generated for the specific object.', null=True,blank=True)
+    object_mapping = models.ManyToManyField(ObjectMapping, verbose_name='Object mappings service binding applies to automatically', blank=True)
     # use_as_default = models.BooleanField(verbose_name='Use by default', help_text='Set this flag to use this by default')
 
     object_filter=models.TextField(max_length=2000, verbose_name='filter expression', help_text='A (python dict) filter on the objects that this binding applies to', blank=True, null=True)
@@ -596,9 +500,9 @@ class ServiceBinding(models.Model):
         return self.title + "(" + self.service_api + " : " + self.service_url + ")"
      
     @staticmethod 
-    def get_service_binding(model,bindingtypes):
+    def get_service_bindings(model,bindingtypes):
         ct = ContentType.objects.get(model=model)
-        return ServiceBinding.objects.filter(object_mapping__content_type=ct, binding_type__in=bindingtypes).first()
+        return ServiceBinding.objects.filter(object_mapping__content_type=ct, binding_type__in=bindingtypes)
     
 class ImportedResource(models.Model):
     TYPE_RULE='RULE'
