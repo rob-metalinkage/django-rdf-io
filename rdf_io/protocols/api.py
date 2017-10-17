@@ -94,7 +94,7 @@ def inference(model, obj, inferencer, gr):
     else:
         raise RDFConfigException("Unsupported server API %s" % inferencer.service_api  )
 
-    print "Performed inference with %s - now need to get results!" % (inferencer)
+#    print "Performed inference with %s - now need to get results!" % (inferencer)
         
     return newgr 
     
@@ -103,5 +103,12 @@ def rdf_delete( binding, model, obj ):
     
     Typically used for cleanup after inferencing and on post_delete signals for autompublished models."""
     from rdf_io.models import ServiceBinding
-    print "Asked to delete from %s %s " % ( binding.service_url, binding.resource)
+    from rdf4j import rdf4j_delete
+#    print "Asked to delete from %s %s " % ( binding.service_url, binding.resource)
+    rdfstore = { 'server_api' : binding.service_api , 'server' : binding.service_url , 'target' : binding.resource }
+ 
+    if binding.service_api == "RDF4JREST" :
+        rdf4j_delete( rdfstore, model, obj )
+    else:
+        raise RDFConfigException ("Delete not supported yet for %s " % binding.service_api )
     return True

@@ -37,4 +37,13 @@ def rdf4j_get(rdfstore, model,obj):
     resttgt = resolveTemplate("".join( ( rdfstore['server'],rdfstore['target'])), model, obj )
     result = requests.get( resttgt, headers=headers )
     return result
+
+def rdf4j_delete(rdfstore, model,obj):    
+    """ Gets a response from an RDF4J datastore access method. Returns HTTP request
     
+    """
+    headers = {'Content-Type': 'application/x-turtle;charset=UTF-8'} 
+    
+    resttgt = resolveTemplate("".join( ( rdfstore['server'],rdfstore['target'])), model, obj )
+    result = requests.delete( resttgt, headers=headers )
+    return result    
