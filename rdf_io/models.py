@@ -139,14 +139,19 @@ def _getattr_related(rootobj,obj, fields):
         if "[" in field :
             filter = field[ field.index("[") +1 : -1 ]
             field = field[0:field.index("[")]
-        
+            filters=_makefilters(filter, obj, rootobj)
+
         val = getattr(obj, field)
         if not val :
             return []
         # import pdb; pdb.set_trace()
         try:
             # slice the list for fields[:] to force a copy so each iteration starts from top of list in spite of pop()
-            return itertools.chain(*(_getattr_related(rootobj,xx, fields[:]) for xx in val.all()))
+            if filter:
+                valset = val.filter(**filters)
+            else :
+                valset = val.all()
+            return itertools.chain(*(_getattr_related(rootobj,xx, fields[:]) for xx in valset))
         except Exception as e:
             pass
         if filter and not _apply_filter(val, filter, obj, rootobj) :
@@ -158,7 +163,6 @@ def _getattr_related(rootobj,obj, fields):
     except AttributeError:
 
         # import pdb; pdb.set_trace()
-        filters=_makefilters(filter, obj, rootobj)
         relobjs = _get_relobjs(obj,field,filters)
 
         # will still throw an exception if val is not set!     
