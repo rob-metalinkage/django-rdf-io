@@ -41,6 +41,25 @@ def _setup(objmapping) :
         print "Error trying to set up auto-publish for object mapping.. %s " % e
         pass
 
+def clear_signals():
+    """For each ObjectMapping force signal to be removed"""
+    mappedObj = ObjectMapping.objects.all()
+    for objmapping in mappedObj:
+        _clear(objmapping)
+    return "synced RDf publishing signals"
+    
+def _clear(objmapping) :
+    try:
+        if objmapping.auto_push :
+            ct = ContentType.objects.get(id = objmapping.content_type_id).model_class()
+            signals.post_save.disconnect(publish_rdf, sender=ct, dispatch_uid=str(ct.__name__))
+            print "RDF publishing un-configured for model {}".format((ct))
+            logger.info(
+                "RDF publishing un-configured for model {}".format((ct)))
+    except Exception as e:
+        print "Error trying to clear auto-publish for object mapping.. %s " % e
+        pass
+        
 def list_pubs():
 #    import pdb; pdb.set_trace()
     import weakref

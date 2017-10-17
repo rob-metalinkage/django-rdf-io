@@ -72,7 +72,7 @@ def ctl_signals(request,cmd):
     if cmd == 'on':
         msg = auto_on()
     elif cmd == 'off' :
-        msg = "not implemented"
+        msg = auto_off()
     elif cmd == 'list' :
         msg = list_pubs()
     elif cmd == 'sync' :
@@ -90,5 +90,9 @@ def auto_on():
     signals.post_save.connect(setup_signals, sender=ObjectMapping)
     return list_pubs()
 
+def auto_off():
+    """turn off all Auto push signals on"""
+    from rdf_io.signals import clear_signals
+    return clear_signals()
     
     
