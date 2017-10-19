@@ -10,6 +10,11 @@ logger = logging.getLogger(__name__)
 
 def publish_rdf( **kwargs) :
     obj = kwargs['instance']
+    try:
+        if obj.skip_post_save :
+            return
+    except: # false or not supported
+        pass
     ct = ContentType.objects.get_for_model(obj)
     oml = ObjectMapping.objects.filter(content_type=ct)
     result = publish( obj, ct.name, oml, None) 
