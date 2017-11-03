@@ -17,7 +17,7 @@ import requests
 import itertools
 import os
 import rdflib
-
+from rdflib.term import URIRef, Literal
 
 
 from rdf_io.protocols import *
@@ -266,10 +266,28 @@ def validate_urisyntax(value):
     else :
         parts = value.split(":")
         if len(parts) != 2 :
-            raise ValidationError('invalid syntax')
-        ns = Namespace.objects.get(prefix=parts[0])
+            raise ValidationError('invalid syntax - neither http URI or a valid CURIE')
+        try:
+            ns = Namespace.objects.get(prefix=parts[0])
+        except Exception as e:
+            raise ValidationError("Namespace not defined for prefix %s" % parts[0])
+
+def validate_propertypath(path):
+    for value in path.split():
+        validate_urisyntax(value)
 
     
+class RDFpath_Field(models.CharField):
+    """
+        Char field for URI with syntax checking for CURIE or http syntax
+    """
+    # validate that prefix is registered if used
+    validators = [ validate_propertypath, ]
+    def __init__(self, *args, **kwargs):
+        kwargs['max_length'] = 500
+        kwargs['help_text']=_(u'space separated list of RDF property URIs (in form a:b or full URI) representing a nested set of properties in an RDF graph')
+        super( RDFpath_Field, self).__init__(*args, **kwargs)
+        
 class CURIE_Field(models.CharField):
     """
         Char field for URI with syntax checking for CURIE or http syntax
@@ -560,7 +578,21 @@ class ImportedResource(models.Model):
             return  graph.parse(self.remote,  format=format )
         return None
         
-
+    def getPathVal(self,gr,rootsubject,path):
+        
+        els = path.split()
+        nels = len(els)
+        idx = 1
+        sparql="SELECT DISTINCT ?p_%s WHERE { <%s> <%s> ?p_%s ." % (nels,str(rootsubject), expand_curie(els[0]), str(idx)) 
+        while idx < nels :
+            sparql +=  " ?p_%s <%s> ?p_%s ." % (str(idx), expand_curie(els[idx]), str(idx+1)) 
+            idx += 1
+        sparql += " } "
+#        print sparql
+        results = gr.query(sparql)
+        # check if a literal now!
+        for res in results:
+            return res[0]
     
     
     

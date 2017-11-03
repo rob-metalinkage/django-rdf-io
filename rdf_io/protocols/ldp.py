@@ -2,7 +2,7 @@
 import requests
 from api import RDFStoreException
         
-def ldp_push(rdfstore, resttgt, model, obj, gr ):
+def ldp_push(rdfstore, resttgt, model, obj, gr, mode ):
     """ publish using LDP protocol """
     etag = _get_etag(resttgt)
     headers = {'Content-Type': 'text/turtle'} 
