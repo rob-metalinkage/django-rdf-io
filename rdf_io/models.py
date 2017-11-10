@@ -258,6 +258,17 @@ def expand_curie(value):
     except:
         pass
     return value
+
+def as_uri(value):
+    """ puts <> around if not a CURIE """
+    try:
+        parts = value.split(":")
+        if len(parts) == 2 :
+			return value
+    except:
+        pass
+    return value.join("<",">")
+    
     
 def validate_urisyntax(value):
 
@@ -267,10 +278,10 @@ def validate_urisyntax(value):
         parts = value.split(":")
         if len(parts) != 2 :
             raise ValidationError('invalid syntax - neither http URI or a valid CURIE')
-        try:
-            ns = Namespace.objects.get(prefix=parts[0])
-        except Exception as e:
-            raise ValidationError("Namespace not defined for prefix %s" % parts[0])
+#        try:
+#            ns = Namespace.objects.get(prefix=parts[0])
+#        except Exception as e:
+#            raise ValidationError("Namespace not defined for prefix %s" % parts[0])
 
 def validate_propertypath(path):
     for value in path.split():
@@ -539,7 +550,9 @@ class ImportedResource(models.Model):
       ( TYPE_QUERY, 'Query template - SPARQL - for future use' ),
       ( TYPE_VALIDATION, 'Validation rule - for future use' ), 
     )
-       
+    
+    graph = None
+    
     resource_type=models.CharField(choices=TYPE_CHOICES,max_length=10,
        help_text='Determines the post processing applied to the uploaded file')   
     target_repo=models.ForeignKey(ServiceBinding, help_text='choose binding to optional RDF repository' , null=True, blank=True)
@@ -569,23 +582,25 @@ class ImportedResource(models.Model):
 
     
     def get_graph(self):
-        graph = rdflib.Graph()
-        if self.file :
+        if self.graph :
+            pass # just return it
+        elif self.file :
             format = rdflib.util.guess_format(self.file.name)
-            return  graph.parse(self.file.name,  format=format )
+            self.graph = rdflib.Graph().parse(self.file.name,  format=format )
         elif self.remote :
             format = rdflib.util.guess_format(self.remote)
-            return  graph.parse(self.remote,  format=format )
-        return None
+            self.graph = rdflib.Graph().parse(self.remote,  format=format )
+        return self.graph
         
     def getPathVal(self,gr,rootsubject,path):
         
         els = path.split()
         nels = len(els)
         idx = 1
-        sparql="SELECT DISTINCT ?p_%s WHERE { <%s> <%s> ?p_%s ." % (nels,str(rootsubject), expand_curie(els[0]), str(idx)) 
+		
+        sparql="SELECT DISTINCT ?p_%s WHERE { <%s> %s ?p_%s ." % (nels,str(rootsubject), as_uri(els[0]), str(idx)) 
         while idx < nels :
-            sparql +=  " ?p_%s <%s> ?p_%s ." % (str(idx), expand_curie(els[idx]), str(idx+1)) 
+            sparql +=  " ?p_%s %s ?p_%s ." % (str(idx), as_uri(els[idx]), str(idx+1)) 
             idx += 1
         sparql += " } "
 #        print sparql
