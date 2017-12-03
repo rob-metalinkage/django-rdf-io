@@ -31,7 +31,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 def show_config(request) :
-    return HttpResponse(json.dumps( settings.RDFSTORE ))
+    return HttpResponse(json.dumps( ConfigVar.objects.all() ))
 
 def sync_remote(request,models):
     """
@@ -50,11 +50,11 @@ def sync_remote(request,models):
             raise Http404("No such model found")
 
         try:
-            rdfstore = get_rdfstore(model,name=request.GET.get('rdfstore') )
+#           rdfstore = get_rdfstore(model,name=request.GET.get('rdfstore') )
+            do_sync_remote( model, ct , rdfstore=None ) 
         except Exception as e:
-            return  HttpResponse("RDF store not configured for model %s threw %s"  % (model,e) , status=410 )
+            return  HttpResponse("Sync to RDF for model %s threw %s"  % (model,e) , status=410 )
 
-        do_sync_remote( model, ct , rdfstore )
     return HttpResponse("sync successful for {}".format(models), status=200)
     
 def do_sync_remote(formodel, ct ,rdfstore):
