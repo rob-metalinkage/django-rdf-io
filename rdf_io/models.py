@@ -18,28 +18,57 @@ import itertools
 import os
 import rdflib
 from rdflib.term import URIRef, Literal
-
+from six import string_types
 
 from rdf_io.protocols import *
 
 # helpers
 def getattr_path(obj,path) :
+    """ Get a list of attribute values matching a nested attribute path with filters 
+    
+    format of path is a string  a.b.c  with optional filters a[condition].b[condition] etc
+    """
     try :
-        return _getattr_related(obj,obj, path.replace('__','.').replace("/",".").split('.'))
+        return _getattr_related(obj,obj, path.replace('__','.').replace("/",".").split('.'), extravals={})
         
     except ValueError as e:
         import traceback
 #        import pdb; pdb.set_trace()
         raise ValueError("Failed to map '{}' on '{}' (cause {})".format(path, obj, e))
- 
+
+def getattr_tuple_path(obj,pathlist) :
+    """ Get a list of attribute value tuples matching a set of nested attribute paths with filters 
+    
+    format of each path is a string  a.b.c  with optional filters a[condition].b[condition] etc
+    
+    tuples are generated at the level of common path - e.g (a.b.c,a.b.d) generaters the tuple (val(c), val(d)) for objects in path a.b
+    """ 
+    for p in pathlist:
+        p.replace('__','.').replace("/",".")
+    try :
+        return _getattr_related(obj,obj, pathlist[0].split('.'), pathlist=pathlist[1:], extravals={})
+        
+    except ValueError as e:
+        import traceback
+#        import pdb; pdb.set_trace()
+        raise ValueError("Failed to map '{}' on '{}' (cause {})".format(pathlist, obj, e))
+        
 def dequote(s):
-    """
+    """ Remove outer quotes from string 
+    
     If a string has single or double quotes around it, remove them.
     todo: Make sure the pair of quotes match.
     If a matching pair of quotes is not found, return the string unchanged.
     """
     if  s.startswith(("'", '"', '<')):
         return s[1:-1]
+    return s
+
+def quote(s):
+    """ quote string so it gets processed as a literal"""
+    
+    if  isinstance(s, string_types): 
+        return s.join(("'",","))
     return s
     
 def _apply_filter(val, filter,localobj, rootobj) :
@@ -97,17 +126,31 @@ def apply_pathfilter(obj, filter_expr ):
             
     return True
     
-def _getattr_related(rootobj,obj, fields):
-    """
+def _getattr_related(rootobj,obj, fields, pathlist=None, extravals={} ):
+    """ recursive walk down object path looking for field values 
+    
         get an attribute - if multi-valued will be a list object!
+        if pathlist is present, then each path in the 
         fields may include filters.  
     """
     # print obj, fields
     if not len(fields):
-        return [obj]
+        return [[obj,] + [ extravals[i] for i in range(0,len(extravals)) ]] if extravals else [obj]
         
     field = fields.pop(0)
+    if pathlist:
+        pathlist2= list(pathlist)
+        for i,p in enumerate(pathlist):
+            if not p :
+                continue
+            elif p.startswith(field + "."):
+                pathlist2[i] = p[len(field)+1:]
+            else :
+                pathlist2[i] = None
+                extravals[i] = getattr_path(obj,p)
+        pathlist = tuple(pathlist2)
     filter = None
+    filters = None
     # try to get - then check for django 1.7+ manager for related field
     try:
         # check for lang 
@@ -151,7 +194,7 @@ def _getattr_related(rootobj,obj, fields):
                 valset = val.filter(**filters)
             else :
                 valset = val.all()
-            return itertools.chain(*(_getattr_related(rootobj,xx, fields[:]) for xx in valset))
+            return itertools.chain(*(_getattr_related(rootobj,xx, fields[:], pathlist=pathlist,extravals=extravals) for xx in valset))
         except Exception as e:
             pass
         if filter and not _apply_filter(val, filter, obj, rootobj) :
@@ -168,10 +211,10 @@ def _getattr_related(rootobj,obj, fields):
         # will still throw an exception if val is not set!     
     try:
         # slice the list fo fields[:] to force a copy so each iteration starts from top of list in spite of pop()
-        return itertools.chain(*(_getattr_related(rootobj,xx, fields[:]) for xx in relobjs.all()))
+        return itertools.chain(*(_getattr_related(rootobj,xx, fields[:], pathlist=pathlist) for xx in relobjs.all()))
 #        !list(itertools.chain(*([[1],[2]])))
     except:
-        return _getattr_related(obj,val, fields)
+        return _getattr_related(obj,val, fields, pathlist=pathlist,extravals=extravals)
 
 def _get_relobjs(obj,field,filters):
     """Find related objects that match
@@ -383,6 +426,9 @@ class GenericMetaProp(models.Model) :
         return ":".join((self.namespace.prefix,self.propname))
     def __unicode__(self):              # __unicode__ on Python 2
         return self.natural_key() 
+    def asURI(self):
+        """ Returns fully qualified uri form of property """
+        return "".join((self.namespace.uri,self.propname))
  
         
 class ObjectTypeManager(models.Manager):
@@ -435,7 +481,7 @@ class AttributeMapping(models.Model):
     scope = models.ForeignKey(ObjectMapping)
     attr = EXPR_Field(_(u'source attribute'),help_text=_(u'literal value or path (attribute[filter].)* with optional @element or ^^element eg locationname[language=].name@language.  filter values are empty (=not None), None, or a string value'),blank=False,editable=True)
     # filter = FILTER_Field(_(u'Filter'), null=True, blank=True,editable=True)
-    predicate = CURIE_Field(_(u'predicate'),blank=False,editable=True)
+    predicate = CURIE_Field(_(u'predicate'),blank=False,editable=True,help_text=_(u'URI or CURIE. Use :prop.prop.prop form to select a property of the mapped object to use asthe predicate'))
     is_resource = models.BooleanField(_(u'as URI'))
     
     def __unicode__(self):
@@ -447,7 +493,7 @@ class EmbeddedMapping(models.Model):
     """
     scope = models.ForeignKey(ObjectMapping)
     attr = EXPR_Field(_(u'source attribute'),help_text=_(u'attribute - if empty nothing generated, if multivalued will be iterated over'))
-    predicate = CURIE_Field(_(u'predicate'),blank=False,editable=True)
+    predicate = CURIE_Field(_(u'predicate'),blank=False,editable=True, help_text=_(u'URI or CURIE. Use :prop.prop.prop form to select a property of the mapped object to use asthe predicate'))
     struct = models.TextField(_(u'object structure'),max_length=2000, help_text=_(u' ";" separated list of <em>predicate</em> <em>attribute expr</em>  where attribute expr a model field or "literal" or <uri> - in future may be an embedded struct inside {} '),blank=False,editable=True)
     use_blank = models.BooleanField(_(u'embed as blank node'), default=True)
     

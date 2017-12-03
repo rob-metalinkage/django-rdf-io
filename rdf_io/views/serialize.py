@@ -1,6 +1,6 @@
 # # -*- coding:utf-8 -*-
 from django.shortcuts import render_to_response, redirect
-from rdf_io.models import ObjectMapping,Namespace,AttributeMapping,EmbeddedMapping, ObjectType,ServiceBinding, getattr_path, apply_pathfilter, expand_curie, dequote
+from rdf_io.models import ObjectMapping,Namespace,AttributeMapping,EmbeddedMapping, ObjectType,ServiceBinding, getattr_path, getattr_tuple_path, apply_pathfilter, expand_curie, dequote, quote
 
 from rdf_io.protocols import push_to_store,inference,rdf_delete
 
@@ -51,7 +51,8 @@ def _as_resource(gr,curie) :
     try:
         (ns,value) = cleaned.split(":",2)
     except:
-        raise ValueError("value not value HTTP or CURIE format %s" % curie)    
+        return URIRef(cleaned)  # just have to assume its not a problem - URNs are valid uri.s
+        # raise ValueError("value not value HTTP or CURIE format %s" % curie)    
     try :
         return URIRef("".join((_getNamespace(ns),value)))
     except:
@@ -164,29 +165,31 @@ def pub_rdf(request,model,id):
     
 def get_rdfstore(model, name=None ):
     # now get the remote store mappings 
-    
-    if name :
-        rdfstore_cfg = settings.RDFSTORES[name]
-    else:
-        rdfstore_cfg = settings.RDFSTORE
-    rdfstore = rdfstore_cfg['default']
-    auth = rdfstore.get('auth')
-    server = rdfstore['server']
-    server_api = rdfstore['server_api']
+    # deprecated - using ConfigVar and ServiceBindings now..
+    print "Warning - deprecated method invoked - use ServiceBindings instead of static config now"
+    return None
+    # if name :
+        # rdfstore_cfg = settings.RDFSTORES[name]
+    # else:
+        # rdfstore_cfg = settings.RDFSTORE
+    # rdfstore = rdfstore_cfg['default']
+    # auth = rdfstore.get('auth')
+    # server = rdfstore['server']
+    # server_api = rdfstore['server_api']
        
-    try:
-        rdfstore = rdfstore_cfg[model]
-        if not rdfstore.has_key('server') :
-            rdfstore['server'] = server
-            rdfstore['auth'] = auth
-        if not rdfstore.has_key('server_api') :
-            rdfstore['server_api'] = server_api            
-    except:
-        pass  # use default then
+    # try:
+        # rdfstore = rdfstore_cfg[model]
+        # if not rdfstore.has_key('server') :
+            # rdfstore['server'] = server
+            # rdfstore['auth'] = auth
+        # if not rdfstore.has_key('server_api') :
+            # rdfstore['server_api'] = server_api            
+    # except:
+        # pass  # use default then
     
-    return rdfstore
+    # return rdfstore
     
-def publish(obj, model, oml, rdfstore ):
+def publish(obj, model, oml, rdfstore=None ):
       
        
     gr = Graph()
@@ -257,7 +260,13 @@ def build_rdf( gr,obj, oml, includemembers ) :
   
         # now get all the attribute mappings and add these in
         for am in AttributeMapping.objects.filter(scope=om) :
-            _add_vals(gr, obj, subject, am.predicate, am.attr , am.is_resource)
+            if am.predicate[0] != ':' :
+                _add_vals(gr, obj, subject, am.predicate, am.attr , am.is_resource)
+            else:
+                for predicate,valuelist in getattr_tuple_path(obj,(am.predicate[1:],am.attr)):
+                    for value in valuelist:
+                        _add_vals(gr, obj, subject, str(predicate), quote(value) , am.is_resource)
+                    
         for em in EmbeddedMapping.objects.filter(scope=om) :
             try:
                 # three options - scalar value in which case attributes relative to basic obj, a mulitvalue obj or we have to look for related objects
@@ -343,7 +352,7 @@ def _add_vals(gr, obj, subject, predicate, attr, is_resource ) :
                 for value in values :
                     if not value :
                         continue
-                    if is_resource :
+                    if is_resource or value[0] == '<' and value [-1] == '>' :
                         object = _as_resource(gr,value)
                     else:
                         try:
