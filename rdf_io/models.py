@@ -106,7 +106,8 @@ def _apply_filter(val, filter,localobj, rootobj) :
     return False
 
 def apply_pathfilter(obj, filter_expr ):
-    """
+    """ does obj match filter expression?
+    
         apply a filter based on a list of path expressions  path1=a,b AND path2=c,db
     """
     and_clauses = filter_expr.split(" AND ")
@@ -207,7 +208,7 @@ def _getattr_related(rootobj,obj, fields, pathlist=None, extravals={} ):
         try:
             # slice the list for fields[:] to force a copy so each iteration starts from top of list in spite of pop()
             if filter:
-                valset = val.filter(**filters)
+                valset = val.filter(**filters['includes']).exclude(**filters['excludes'])
             else :
                 valset = val.all()
             return itertools.chain(*(_getattr_related(rootobj,xx, fields[:], pathlist=pathlist,extravals=extravals) for xx in valset))
@@ -268,43 +269,52 @@ def _get_relobjs(obj,field,filters):
             return claz.objects.filter(**filters)        
         
 def _makefilters(filter, obj, rootobj):
-    """Makes a django filter syntax from provided filter
+    """Makes a django filter syntax for includes and excludes from provided filter
     
     allow for filter clauses with references relative to the object being serialised, the root of the path being encoded or the element in the path specifying the filter""" 
     if not filter :
         return {}
     filterclauses = dict( [fc.split("=") for fc in filter.replace(" AND ",",").split(",")])
-    extrafilterclauses = {}
+    includes = {}
+    excludes = {}
     for fc in filterclauses :
         fval = filterclauses[fc]
-        if not fval :                            
-            extrafilterclauses[ "".join((fc,"__isnull"))] = False
-        elif fval == 'None' :                            
-            extrafilterclauses[ "".join((fc,"__isnull"))] = True
-        elif fval.startswith('^'): # property value via path from root object being serialised
-            try:
-                objvals = getattr_path(rootobj,fval[1:])
-                if len(objvals) == 0 :
-                    return [] # non null match against null source fails
-                extrafilterclauses[fc] = objvals.pop()
-            except Exception as e:
-                raise ValueError ("Error in filter clause %s on field %s " % (fc,prop))
-            
-        elif fval.startswith('.'): # property value via path from current path object
-            try:
-                objvals = getattr_path(obj,fval[1:])
-                if len(objvals) == 0 :
-                    return [] # non null match against null source fails
-                extrafilterclauses[fc] = objvals.pop()
-            except Exception as e:
-                raise ValueError ("Error in filter clause %s on field %s " % (fc,prop))
-        elif fval.startswith(("'", '"', '<')) :
-            extrafilterclauses[fc] = dequote(fval)
-        elif not unicode(filterclauses[fc]).isnumeric() :
-            # look for a value
-            extrafilterclauses[fc] = getattr(obj, fval)
+        if fc[-1] == '!' :
+            excludes = _add_clause(excludes, fc[0:-1], fval, obj, rootobj)
         else:
-            extrafilterclauses[fc] = fval
+            includes = _add_clause(includes, fc, fval, obj, rootobj)
+
+    return { 'includes': includes , 'excludes' : excludes }        
+            
+def _add_clause(extrafilterclauses, fc, fval , obj, rootobj):
+    if not fval :                            
+        extrafilterclauses[ "".join((fc,"__isnull"))] = False
+    elif fval == 'None' :                            
+        extrafilterclauses[ "".join((fc,"__isnull"))] = True
+    elif fval.startswith('^'): # property value via path from root object being serialised
+        try:
+            objvals = getattr_path(rootobj,fval[1:])
+            if len(objvals) == 0 :
+                return [] # non null match against null source fails
+            extrafilterclauses[fc] = objvals.pop()
+        except Exception as e:
+            raise ValueError ("Error in filter clause %s on field %s " % (fc,prop))
+        
+    elif fval.startswith('.'): # property value via path from current path object
+        try:
+            objvals = getattr_path(obj,fval[1:])
+            if len(objvals) == 0 :
+                return [] # non null match against null source fails
+            extrafilterclauses[fc] = objvals.pop()
+        except Exception as e:
+            raise ValueError ("Error in filter clause %s on field %s " % (fc,prop))
+    elif fval.startswith(("'", '"', '<')) :
+        extrafilterclauses[fc] = dequote(fval)
+    elif not unicode(fval).isnumeric() :
+        # look for a value
+        extrafilterclauses[fc] = getattr(obj, fval)
+    else:
+        extrafilterclauses[fc] = fval
        
     return extrafilterclauses
    

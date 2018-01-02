@@ -10,7 +10,6 @@ class ObjectMappingTestCase(TestCase):
     
     testmapping = None
     testobj = None
-    
     def setUp(self):
         (object_type,created) = ObjectType.objects.get_or_create(uri="http://metalinkage.com.au/rdfio/ObjectMapping", defaults = { "label" : "Test RDF target type" })
         content_type = ContentType.objects.get(app_label="rdf_io",model="objectmapping")
@@ -34,7 +33,7 @@ class ObjectMappingTestCase(TestCase):
 
     def test_getattr_path_direct_int(self):
         vals = getattr_path(self.testobj,"id")
-        self.assertEqual(vals[0],1)
+        self.assertEqual(vals[0],self.testobj.id)
 
     def test_getattr_path_nested_FK(self):
         vals = getattr_path(self.testobj,"content_type.model")
@@ -44,10 +43,24 @@ class ObjectMappingTestCase(TestCase):
         vals = getattr_path(self.testobj,"obj_type.uri")
         self.assertEqual(list(vals)[0],"http://metalinkage.com.au/rdfio/ObjectMapping")
 
+    def test_getattr_path_nested_M2M_filter_on_string(self):
         (extraobject_type,created) = ObjectType.objects.get_or_create(uri="http://metalinkage.com.au/rdfio/ObjectMapping2", defaults = { "label" : "Test RDF target type - extra" })
         self.testobj.obj_type.add(extraobject_type) 
         vals = list(getattr_path(self.testobj,"obj_type.uri"))
         self.assertEqual(len(vals),2)
-        import pdb; pdb.set_trace()
         vals = list(getattr_path(self.testobj,"obj_type[uri='http://metalinkage.com.au/rdfio/ObjectMapping'].uri"))
-        self.assertEqual(len(vals),1)       
+        self.assertEqual(len(vals),1)
+        vals = list(getattr_path(self.testobj,"obj_type[uri='http://metalinkage.com.au/rdfio/ObjectMapping2'].uri"))
+        self.assertEqual(len(vals),1)
+        vals = list(getattr_path(self.testobj,"obj_type[uri='http://metalinkage.com.au/rdfio/ObjectMapping3'].uri"))
+        self.assertEqual(len(vals),0)
+
+    def test_getattr_path_nested_M2M_filter_int(self):
+        (extraobject_type,created) = ObjectType.objects.get_or_create(uri="http://metalinkage.com.au/rdfio/ObjectMapping2", defaults = { "label" : "Test RDF target type - extra" })
+        self.testobj.obj_type.add(extraobject_type) 
+        vals = list(getattr_path(self.testobj,"obj_type[id=%s].id" % extraobject_type.id))
+        self.assertEqual(list(vals)[0],extraobject_type.id)
+        # import pdb; pdb.set_trace()
+        vals = list(getattr_path(self.testobj,"obj_type[id!=%s].id" % extraobject_type.id))
+        self.assertNotEqual(list(vals)[0],extraobject_type.id)
+        
