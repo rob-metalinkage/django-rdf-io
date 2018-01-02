@@ -29,13 +29,29 @@ def getattr_path(obj,path) :
     format of path is a string  a.b.c  with optional filters a[condition].b[condition] etc
     """
     try :
-        return _getattr_related(obj,obj, path.replace('__','.').replace("/",".").split('.'), extravals={})
+        return _getattr_related(obj,obj, pathsplit(path.replace('__','.')), extravals={})
         
     except ValueError as e:
         import traceback
 #        import pdb; pdb.set_trace()
         raise ValueError("Failed to map '{}' on '{}' (cause {})".format(path, obj, e))
 
+def pathsplit(str):
+    """ takes a path with filters which may include literals, and ignores filter contents when splitting """
+    result = []
+    tok_start = 0
+    infilt= False
+    for i,c in enumerate(str) :
+        if c == '.' and not infilt :
+            result.append( str[tok_start:i])
+            tok_start = i+1
+        elif c == '[' :
+            infilt=True
+        elif c == ']' :
+            infilt=False
+    result.append(str[tok_start:])
+    return result
+    
 def getattr_tuple_path(obj,pathlist) :
     """ Get a list of attribute value tuples matching a set of nested attribute paths with filters 
     
@@ -46,7 +62,7 @@ def getattr_tuple_path(obj,pathlist) :
     for p in pathlist:
         p.replace('__','.').replace("/",".")
     try :
-        return _getattr_related(obj,obj, pathlist[0].split('.'), pathlist=pathlist[1:], extravals={})
+        return _getattr_related(obj,obj, pathsplit(pathlist[0]), pathlist=pathlist[1:], extravals={})
         
     except ValueError as e:
         import traceback
@@ -284,7 +300,7 @@ def _makefilters(filter, obj, rootobj):
                 raise ValueError ("Error in filter clause %s on field %s " % (fc,prop))
         elif fval.startswith(("'", '"', '<')) :
             extrafilterclauses[fc] = dequote(fval)
-        elif not filterclauses[fc].isnumeric() :
+        elif not unicode(filterclauses[fc]).isnumeric() :
             # look for a value
             extrafilterclauses[fc] = getattr(obj, fval)
         else:
