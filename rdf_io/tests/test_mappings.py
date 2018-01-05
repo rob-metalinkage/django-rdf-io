@@ -2,12 +2,7 @@ from rdf_io.models import *
 from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 
-class ObjectMappingTestCase(TestCase):
-    """ Test case for object serialisation to rdf
-    
-    Creates an object mapping for an ObjectMapping object - which is a suitably complex object with nested M2M and avoid us having 
-    to have dependencies on other fixtures - if all a bit recursive :-) """
-    
+class SerialisationSetupTestCase(TestCase):
     testmapping = None
     testobj = None
     def setUp(self):
@@ -15,7 +10,7 @@ class ObjectMappingTestCase(TestCase):
         content_type = ContentType.objects.get(app_label="rdf_io",model="objectmapping")
         defaults =         { "auto_push" : False , 
           "id_attr" : "id",
-          "target_uri_expr" : "http://metalinkage.com.au/test/id/",
+          "target_uri_expr" : '"http://metalinkage.com.au/test/id/"',
           "content_type" : content_type
         }
         
@@ -25,8 +20,26 @@ class ObjectMappingTestCase(TestCase):
         # run mapping over myself - i'm a suitable complex object :-)
         self.testmapping = pm
         self.testobj = pm
-        am = AttributeMapping(scope=pm, attr="definition", predicate="rdfs:label", is_resource=False).save()
+        # create test with absolute URI with <> 
+        am = AttributeMapping(scope=pm, attr="id_attr", predicate="<http://metalinkage.com.au/rdfio/id_attr>", is_resource=False).save()
+        # create test with URI with http string
+        am = AttributeMapping(scope=pm, attr="id_attr", predicate="http://metalinkage.com.au/rdfio/id_attr", is_resource=False).save()
+        # create test with CURIE
+        ns = Namespace.objects.get_or_create(uri='http://www.w3.org/2000/01/rdf-schema#', prefix='rdfs')
+        am = AttributeMapping(scope=pm, attr="name", predicate="rdfs:label", is_resource=False).save()
      
+        # test with language tag
+        am = AttributeMapping(scope=pm, attr="name@en", predicate="rdfs:comment", is_resource=False).save()
+         
+
+class ObjectMappingTestCase(SerialisationSetupTestCase):
+    """ Test case for object serialisation to rdf
+    
+    Creates an object mapping for an ObjectMapping object - which is a suitably complex object with nested M2M and avoid us having 
+    to have dependencies on other fixtures - if all a bit recursive :-) """
+    
+ 
+ 
     def test_getattr_path_direct_char(self):
         vals = getattr_path(self.testobj,"id_attr")
         self.assertEqual(vals[0],"id")
@@ -54,6 +67,8 @@ class ObjectMappingTestCase(TestCase):
         self.assertEqual(len(vals),1)
         vals = list(getattr_path(self.testobj,"obj_type[uri='http://metalinkage.com.au/rdfio/ObjectMapping3'].uri"))
         self.assertEqual(len(vals),0)
+        vals = list(getattr_path(self.testobj,"obj_type[uri!='http://metalinkage.com.au/rdfio/ObjectMapping3'].uri"))
+        self.assertEqual(len(vals),2)
 
     def test_getattr_path_nested_M2M_filter_int(self):
         (extraobject_type,created) = ObjectType.objects.get_or_create(uri="http://metalinkage.com.au/rdfio/ObjectMapping2", defaults = { "label" : "Test RDF target type - extra" })
@@ -63,4 +78,7 @@ class ObjectMappingTestCase(TestCase):
         # import pdb; pdb.set_trace()
         vals = list(getattr_path(self.testobj,"obj_type[id!=%s].id" % extraobject_type.id))
         self.assertNotEqual(list(vals)[0],extraobject_type.id)
+        
+
+        
         

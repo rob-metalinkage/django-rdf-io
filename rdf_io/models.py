@@ -16,7 +16,7 @@ except:
 import requests
 import itertools
 import os
-import rdflib
+from rdflib import Graph,namespace
 from rdflib.term import URIRef, Literal
 from six import string_types
 
@@ -338,6 +338,46 @@ def as_uri(value):
         pass
     return value.join("<",">")
     
+
+def as_resource(gr,curie) :
+    cleaned = dequote(curie)
+    if cleaned[0:4] == 'http' :
+        return URIRef(cleaned)
+    # this will raise error if not valid curie format
+    try:
+        (ns,value) = cleaned.split(":",2)
+    except:
+        return URIRef(cleaned)  # just have to assume its not a problem - URNs are valid uri.s
+        # raise ValueError("value not value HTTP or CURIE format %s" % curie)    
+    try :
+        nsuri = Namespace.getNamespace(ns)
+        if nsuri :
+            gr.namespace_manager.bind( str(ns), namespace.Namespace(nsuri), override=False)
+ 
+        return URIRef("".join((str(nsuri),value)))
+    except:
+        raise ValueError("prefix " + ns + "not recognised")
+
+def makenode(gr,value, is_resource=False):
+    """ make a RDF node from a string representation
+    
+    probably ought to be able to find this function in rdflib but seems hidden"""
+    if is_resource or value[0] == '<' and value [-1] == '>' :
+        return as_resource(gr,value)
+    else:
+        try:
+            try :
+                (value,valtype) = value.split("^^")
+                return Literal(value,datatype=valtype)
+            except:
+                try :
+                    (value,valtype) = value.split("@")
+                    return Literal(value,lang=valtype)
+                except:
+                    return Literal(value)
+        except:
+            raise ValueError("Value not a convertable type %s" % type(value))        
+ 
     
 def validate_urisyntax(value):
 
@@ -403,6 +443,7 @@ class FILTER_Field(models.CharField):
     
 # Need natural keys so can reference in fixtures - let this be the uri
 
+ 
 class NamespaceManager(models.Manager):
     def get_by_natural_key(self, uri):
         return self.get(uri=uri)
@@ -424,7 +465,14 @@ class Namespace(models.Model) :
         return self.uri[0:-1]
     def is_hash_uri(self):
         return self.uri[-1] == '#'
-        
+    
+    @staticmethod
+    def getNamespace( prefix) :
+        try:
+            return Namespace.objects.get(prefix = prefix)
+        except:
+            return None
+      
     class Meta: 
         verbose_name = _(u'namespace')
         verbose_name_plural = _(u'namespaces')
@@ -507,7 +555,7 @@ class AttributeMapping(models.Model):
     scope = models.ForeignKey(ObjectMapping)
     attr = EXPR_Field(_(u'source attribute'),help_text=_(u'literal value or path (attribute[filter].)* with optional @element or ^^element eg locationname[language=].name@language.  filter values are empty (=not None), None, or a string value'),blank=False,editable=True)
     # filter = FILTER_Field(_(u'Filter'), null=True, blank=True,editable=True)
-    predicate = CURIE_Field(_(u'predicate'),blank=False,editable=True,help_text=_(u'URI or CURIE. Use :prop.prop.prop form to select a property of the mapped object to use asthe predicate'))
+    predicate = CURIE_Field(_(u'predicate'),blank=False,editable=True,help_text=_(u'URI or CURIE. Use :prop.prop.prop form to select a property of the mapped object to use as the predicate'))
     is_resource = models.BooleanField(_(u'as URI'))
     
     def __unicode__(self):

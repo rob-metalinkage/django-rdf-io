@@ -1,7 +1,6 @@
 # # -*- coding:utf-8 -*-
 from django.shortcuts import render_to_response, redirect
-from rdf_io.models import ObjectMapping,Namespace,AttributeMapping,EmbeddedMapping, ObjectType,ServiceBinding, getattr_path, getattr_tuple_path, apply_pathfilter, expand_curie, dequote, quote
-
+from rdf_io.models import *
 from rdf_io.protocols import push_to_store,inference,rdf_delete
 
 from django.template import RequestContext
@@ -34,31 +33,7 @@ logger = logging.getLogger(__name__)
 
 _nslist = {}
 
-def _getNamespace( prefix ) :
-    if not _nslist.has_key( prefix ) :
-         ns = Namespace.objects.get(prefix = prefix)
-         if ns: 
-            _nslist[ prefix ] = ns.uri
-         else :
-            _nslist[ prefix ] = None
-    return _nslist[prefix]
-  
-def _as_resource(gr,curie) :
-    cleaned = dequote(curie)
-    if cleaned[0:4] == 'http' :
-        return URIRef(cleaned)
-    # this will raise error if not valid curie format
-    try:
-        (ns,value) = cleaned.split(":",2)
-    except:
-        return URIRef(cleaned)  # just have to assume its not a problem - URNs are valid uri.s
-        # raise ValueError("value not value HTTP or CURIE format %s" % curie)    
-    try :
-        return URIRef("".join((_getNamespace(ns),value)))
-    except:
-        raise ValueError("prefix " + ns + "not recognised")
- 
- 
+
 def to_rdfbykey(request,model,key):
     """
         take a model name + object id reference to an instance and apply any RDF serialisers defined for this
@@ -127,8 +102,6 @@ def _tordf(request,model,id,key):
         gr = build_rdf(gr, obj, oml, includemembers)
     except Exception as e:
         raise Http404("Error during serialisation: " + str(e) )
-    for ns in _nslist.keys() :
-        gr.namespace_manager.bind( str(ns), namespace.Namespace(str(_nslist[ns])), override=False)
     return HttpResponse(content_type="text/turtle", content=gr.serialize(format=format))
 
 def pub_rdf(request,model,id):
@@ -200,9 +173,7 @@ def publish(obj, model, oml, rdfstore=None ):
         gr = build_rdf(gr, obj, oml, False)
     except Exception as e:
         raise Exception("Error during serialisation: " + str(e) )
-    for ns in _nslist.keys() :
-        gr.namespace_manager.bind( str(ns), namespace.Namespace(str(_nslist[ns])), override=False)
-    
+   
 #    curl -X POST -H "Content-Type: text/turtle" -d @- http://192.168.56.151:8080/marmotta/import/upload?context=http://mapstory.org/def/featuretypes/gazetteer 
     
     for inferencer in ServiceBinding.get_service_bindings(model,(ServiceBinding.INFERENCE,) ) :
@@ -256,7 +227,7 @@ def build_rdf( gr,obj, oml, includemembers ) :
         subject = URIRef(uri)
         
         for omt in om.obj_type.all() :
-            gr.add( (subject, RDF.type , _as_resource(gr,omt.uri)) )
+            gr.add( (subject, RDF.type , as_resource(gr,omt.uri)) )
   
         # now get all the attribute mappings and add these in
         for am in AttributeMapping.objects.filter(scope=om) :
@@ -325,7 +296,7 @@ def build_rdf( gr,obj, oml, includemembers ) :
                             # an internal struct has been found so add a new node if not ye done
                             if not newnode:
                                 newnode = BNode()
-                                gr.add( (subject, _as_resource(gr,em.predicate) , newnode) )
+                                gr.add( (subject, as_resource(gr,em.predicate) , newnode) )
                             _add_vals(gr, value, newnode, predicate, expr , is_resource)
                         else:
                             # add to parent
@@ -336,35 +307,20 @@ def build_rdf( gr,obj, oml, includemembers ) :
                 raise ValueError("Could not evaluate extended mapping %s : %s " % (e,em.attr))
     # do this after looping through all object mappings!
     return gr
-
+                            
 def _add_vals(gr, obj, subject, predicate, attr, is_resource ) :       
             if type(attr) == float or attr[0] in '\'\"' : # then a literal
                 if is_resource :
-                    gr.add( (subject, _as_resource(gr,predicate) , _as_resource(gr,attr) ) )
+                    gr.add( (subject, as_resource(gr,predicate) , as_resource(gr,attr) ) )
                 else:
                     try:
                         (str,lang) = attr.split('@')
-                        gr.add( (subject, _as_resource(gr,predicate) , Literal(dequote(str),lang=lang) ))
+                        gr.add( (subject, as_resource(gr,predicate) , Literal(dequote(str),lang=lang) ))
                     except:
-                        gr.add( (subject, _as_resource(gr,predicate) , Literal(dequote(attr)) ))
+                        gr.add( (subject, as_resource(gr,predicate) , Literal(dequote(attr)) ))
             else :
                 values = getattr_path(obj,attr)
                 for value in values :
                     if not value :
                         continue
-                    if is_resource or value[0] == '<' and value [-1] == '>' :
-                        object = _as_resource(gr,value)
-                    else:
-                        try:
-                            try :
-                                (value,valtype) = value.split("^^")
-                                object = Literal(value,datatype=valtype)
-                            except:
-                                try :
-                                    (value,valtype) = value.split("@")
-                                    object = Literal(value,lang=valtype)
-                                except:
-                                    object = Literal(value)
-                        except:
-                            raise ValueError("Value not a convertable type %s" % type(value))
-                    gr.add( (subject, _as_resource(gr,predicate) , object) )
+                    gr.add( (subject, as_resource(gr,predicate) , makenode(gr,value,is_resource) ) )
