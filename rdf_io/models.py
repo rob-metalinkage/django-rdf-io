@@ -13,10 +13,11 @@ try:
 except:
     from django.db.models.fields.related_descriptors import ForwardManyToOneDescriptor as ReverseSingleRelatedObjectDescriptor
 
+import re
 import requests
 import itertools
 import os
-from rdflib import Graph,namespace
+from rdflib import Graph,namespace, XSD
 from rdflib.term import URIRef, Literal
 from six import string_types
 
@@ -81,10 +82,21 @@ def dequote(s):
     return s
 
 def quote(s):
-    """ quote string so it gets processed as a literal"""
+    """ quote string so it gets processed as a literal
     
-    if  isinstance(s, string_types): 
-        return s.join(("'",","))
+    leave @lang and ^^datatype qualifiers outside quoting!
+    """
+    
+    if  isinstance(s, string_types) and s[0] not in ('"',"'"):
+        try:
+            root,lang = s.split('@')
+            return ''.join(('"',root,'"','@',lang))
+        except:
+            try:
+                root,lang = s.split('^^')
+                return ''.join(('"',root,'"','^^',lang))
+            except:            
+                return s.join(('"','"'))
     return s
     
 def _apply_filter(val, filter,localobj, rootobj) :
@@ -254,7 +266,7 @@ def _get_relobjs(obj,field,filters):
 
     # if no related_name set in related model then only one candidate and djanog creates X_set attribute we can use
     try:
-        return get_attr(obj, "".join((field,"_set"))).filter(**filters)
+        return get_attr(obj, "".join((field,"_set"))).filter(**filters['includes']).exclude(**filters['excludes'])
     except:
         pass
     
@@ -265,8 +277,8 @@ def _get_relobjs(obj,field,filters):
         if relprop and prop != relprop :
             continue
         if relprop or type(val) is ReverseSingleRelatedObjectDescriptor and val.field.related.model == type(obj) :
-            filters.update({prop:obj})
-            return claz.objects.filter(**filters)        
+            filters['includes'].update({prop:obj})
+            return claz.objects.filter(**filters['includes']).exclude(**filters['excludes'])        
         
 def _makefilters(filter, obj, rootobj):
     """Makes a django filter syntax for includes and excludes from provided filter
@@ -358,6 +370,16 @@ def as_resource(gr,curie) :
     except:
         raise ValueError("prefix " + ns + "not recognised")
 
+TYPES = { 
+    'xsd:int' : XSD.integer ,
+    'xsd:float': XSD.float , 
+    'xsd:double': XSD.double , 
+    'xsd:time' : XSD.time ,
+    'xsd:dateTime' : XSD.dateTime ,
+    'xsd:boolean' : XSD.boolean ,
+    'xsd:integer' : XSD.integer ,
+    }
+    
 def makenode(gr,value, is_resource=False):
     """ make a RDF node from a string representation
     
@@ -368,13 +390,25 @@ def makenode(gr,value, is_resource=False):
         try:
             try :
                 (value,valtype) = value.split("^^")
-                return Literal(value,datatype=valtype)
+                try:
+                    typeuri = TYPES[valtype]
+                except:
+                    typeuri = as_resource(gr,valtype)
+                return Literal(value,datatype=typeuri)
             except:
                 try :
                     (value,valtype) = value.split("@")
-                    return Literal(value,lang=valtype)
+                    return Literal(dequote(value),lang=valtype)
                 except:
-                    return Literal(value)
+                    try:
+                        value = int(value)
+                        return Literal(value, datatype=XSD.integer)
+                    except:
+                        try:
+                            value = double(value)
+                            return Literal(value, datatype=XSD.double)
+                        except:
+                            return Literal(dequote(value))
         except:
             raise ValueError("Value not a convertable type %s" % type(value))        
  
@@ -483,9 +517,10 @@ class GenericMetaPropManager(models.Manager):
     def get_by_natural_key(self, curie):
         try:
             (namespace,prop) = curie.split(":")
+            return self.get(namespace__prefix=namespace, propname=prop)
         except:
-            pass
-        return self.get(namespace__prefix=namespace, propname=prop)
+            return self.get(uri=curie)
+            
         
 class GenericMetaProp(models.Model) :
     """
@@ -493,17 +528,46 @@ class GenericMetaProp(models.Model) :
         Works with the namespace object to allow short forms of metadata to be displayed
     """
     objects = GenericMetaPropManager()
-    namespace = models.ForeignKey(Namespace,verbose_name=_(u'namespace'))
-    propname =  models.CharField(_(u'name'),blank=False,max_length=250,editable=True)
+    namespace = models.ForeignKey(Namespace,blank=True, null=True, verbose_name=_(u'namespace'))
+    propname =  models.CharField(_(u'name'),blank=True,max_length=250,editable=True)
+    uri = CURIE_Field(blank=True)
     definition  = models.TextField(_(u'definition'), blank=True)
     def natural_key(self):
-        return ":".join((self.namespace.prefix,self.propname))
+        return  ":".join((self.namespace.prefix,self.propname)) if self.namespace else self.uri
     def __unicode__(self):              # __unicode__ on Python 2
         return self.natural_key() 
     def asURI(self):
         """ Returns fully qualified uri form of property """
-        return "".join((self.namespace.uri,self.propname))
- 
+        return uri
+        
+    def save(self,*args,**kwargs):
+        if self.namespace :
+            self.uri = "".join((self.namespace.uri,self.propname))
+        else:
+            try:
+                (dummy, base, sep, term) = re.split('(.*)([/#])', self.uri)
+                ns = Namespace.objects.get(uri="".join((base,sep)))
+                if ns:
+                    self.namespace = ns
+                    self.propname = term
+            except:
+                pass
+                
+        super(GenericMetaProp, self).save(*args,**kwargs)
+                
+
+class AttachedMetadata(models.Model):
+    """ metadata property that can be attached using subclass that specificies the subject property FK bining 
+    
+        extensible metadata using rdf_io managed reusable generic metadata properties
+    """
+    metaprop   =  models.ForeignKey(GenericMetaProp,verbose_name='property') 
+    value = models.CharField(_(u'value'),max_length=2000)
+    def __unicode__(self):
+        return unicode(self.metaprop)   
+    def getRDFValue(self):
+        """ returns value in appropriate datatype """
+        return makenode(value)    
         
 class ObjectTypeManager(models.Manager):
     def get_by_natural_key(self, uri):

@@ -1,6 +1,7 @@
 from rdf_io.models import *
 from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
+from rdflib import Literal, URIRef, Graph, XSD
 
 class SerialisationSetupTestCase(TestCase):
     testmapping = None
@@ -30,8 +31,69 @@ class SerialisationSetupTestCase(TestCase):
      
         # test with language tag
         am = AttributeMapping(scope=pm, attr="name@en", predicate="rdfs:comment", is_resource=False).save()
-         
+        
+        # generic metadata properties
+        ns,created = Namespace.objects.get_or_create(uri='http://example.org/', prefix='eg')
+        gmp,created = GenericMetaProp.objects.get_or_create(namespace=ns, propname="metaprop")
+        attached,created = AttachedMetadata.objects.get_or_create(metaprop=gmp,value="something to change during testing")
+        
+class MetaObjectsTestCase(SerialisationSetupTestCase):
+    """ Tests basic object behaviours needed for RDF content handling """
 
+    def test_make_metaprop_with_uri_from_ns(self):
+        """ tests that if a uri is provided for which a namespace is registered then namespace gets set"""
+        gmp,created = GenericMetaProp.objects.get_or_create(uri="http://example.org/frog")
+        self.assertEqual(gmp.namespace.prefix,"eg")
+        self.assertEqual(gmp.propname,"frog")
+
+    def test_get_metaprop_with_curie(self):
+        gmp = GenericMetaProp.objects.get_by_natural_key("eg:metaprop")
+        self.assertEqual(gmp.namespace.prefix,"eg")
+        self.assertEqual(gmp.propname,"metaprop")
+
+    def test_get_metaprop_with_url(self):
+        gmp = GenericMetaProp.objects.get_by_natural_key("http://example.org/metaprop")
+        self.assertEqual(gmp.namespace.prefix,"eg")
+        self.assertEqual(gmp.propname,"metaprop")
+        
+    def test_node_string(self):
+        self.assertEqual(makenode(Graph(),"frog"),Literal("frog"))
+
+    def test_node_string_quoted(self):
+        self.assertEqual(makenode(Graph(),'"frog"'),Literal("frog"))
+        
+    def test_node_string_int(self):
+        import pdb; pdb.set_trace()
+        self.assertEqual(makenode(Graph(),"12"),Literal("12",datatype=XSD.integer))
+        
+    def test_node_string_lang(self):
+        self.assertEqual(makenode(Graph(),"frog@en"),Literal("frog",lang="en"))
+
+    def test_node_string_lang_quoted(self):
+        self.assertEqual(makenode(Graph(),'"frog"@en'),Literal("frog",lang="en"))
+        
+    def test_node_string_datatype_curie(self):
+        self.assertEqual(makenode(Graph(),"12^^xsd:int"),Literal("12",datatype=XSD.integer))
+    
+    def test_node_string_datatype_uri(self):
+        self.assertEqual(makenode(Graph(),"frog^^<http://eg.org>"),Literal("frog",datatype=URIRef('http://eg.org')) )
+        
+    def test_quote_string(self):
+        self.assertEqual(quote('frog'), '"frog"')
+        
+    def test_quote_string_prequoted(self):
+        self.assertEqual(quote('"frog"'), '"frog"')
+    
+    def test_quote_string_lang(self):
+        self.assertEqual(quote('frog@en'), '"frog"@en')
+
+    def test_quote_string_lang_prequoted(self):
+        self.assertEqual(quote('"frog"@en'), '"frog"@en')
+        
+    def test_quote_string_datatype(self):
+        self.assertEqual(quote('frog^^<http://eg.org>'), '"frog"^^<http://eg.org>')
+
+        
 class ObjectMappingTestCase(SerialisationSetupTestCase):
     """ Test case for object serialisation to rdf
     
