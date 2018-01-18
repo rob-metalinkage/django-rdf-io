@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 import os
 import rdflib
+import urllib
 
 import requests
 
@@ -59,7 +60,7 @@ def resolveTemplate(template, model, obj) :
                     raise Exception( "template references unset ConfigVariable %s" % param[1:])
             else:
                 try:
-                    vals[param] = iter(getattr_path(obj,param)).next()
+                    vals[param] = urllib.quote_plus( str(iter(getattr_path(obj,param)).next()) )
                 except:
                     if param == 'slug'  :
                         vals[param] = obj.id
