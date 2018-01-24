@@ -102,7 +102,7 @@ def _tordf(request,model,id,key):
         gr = build_rdf(gr, obj, oml, includemembers)
     except Exception as e:
         raise Http404("Error during serialisation: " + str(e) )
-    return HttpResponse(content_type="text/turtle", content=gr.serialize(format=format))
+    return HttpResponse(content_type="text/turtle; charset=utf-8", content=gr.serialize(format=format))
 
 def pub_rdf(request,model,id):
     """
