@@ -36,7 +36,8 @@ class SerialisationSetupTestCase(TestCase):
         ns,created = Namespace.objects.get_or_create(uri='http://example.org/', prefix='eg')
         gmp,created = GenericMetaProp.objects.get_or_create(namespace=ns, propname="metaprop")
         attached,created = AttachedMetadata.objects.get_or_create(metaprop=gmp,value="something to change during testing")
-        
+
+
 class MetaObjectsTestCase(SerialisationSetupTestCase):
     """ Tests basic object behaviours needed for RDF content handling """
 
@@ -63,7 +64,7 @@ class MetaObjectsTestCase(SerialisationSetupTestCase):
         self.assertEqual(makenode(Graph(),'"frog"'),Literal("frog"))
         
     def test_node_string_int(self):
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
         self.assertEqual(makenode(Graph(),"12"),Literal("12",datatype=XSD.integer))
         
     def test_node_string_lang(self):
@@ -137,10 +138,14 @@ class ObjectMappingTestCase(SerialisationSetupTestCase):
         self.testobj.obj_type.add(extraobject_type) 
         vals = list(getattr_path(self.testobj,"obj_type[id=%s].id" % extraobject_type.id))
         self.assertEqual(list(vals)[0],extraobject_type.id)
-        # import pdb; pdb.set_trace()
+        # 
         vals = list(getattr_path(self.testobj,"obj_type[id!=%s].id" % extraobject_type.id))
         self.assertNotEqual(list(vals)[0],extraobject_type.id)
         
-
+    def test_get_relobjs(self):
+        """ test case where related objects refer to this object (reverse FK)  """
+        #import pdb; pdb.set_trace()
+        relobjs = list(getattr_path(self.testmapping,'attributemapping'))
+        self.assertEqual(len(relobjs),4)
         
         

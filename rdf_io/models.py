@@ -233,8 +233,6 @@ def _getattr_related(rootobj,obj, fields, pathlist=None, extravals={} ):
         elif typeuri :
             val = "^^".join((val,typeuri))
     except AttributeError:
-
-        # import pdb; pdb.set_trace()
         relobjs = _get_relobjs(obj,field,filters)
 
         # will still throw an exception if val is not set!     
@@ -245,7 +243,7 @@ def _getattr_related(rootobj,obj, fields, pathlist=None, extravals={} ):
     except:
         return _getattr_related(obj,val, fields, pathlist=pathlist,extravals=extravals)
 
-def _get_relobjs(obj,field,filters):
+def _get_relobjs(obj,field,filters=None):
     """Find related objects that match
     
     Could be linked using a "related_name" or as <type>_set
@@ -254,6 +252,8 @@ def _get_relobjs(obj,field,filters):
     """
     # then try to find objects of this type with a foreign key property using either (name) supplied or target object type
     
+    if not filters:
+        filters = { 'includes': {} , 'excludes' : {} }
     if field.endswith(")") :
         (field, relprop ) = str(field[0:-1]).split("(")
     else :
@@ -266,7 +266,7 @@ def _get_relobjs(obj,field,filters):
 
     # if no related_name set in related model then only one candidate and djanog creates X_set attribute we can use
     try:
-        return get_attr(obj, "".join((field,"_set"))).filter(**filters['includes']).exclude(**filters['excludes'])
+        return getattr(obj, "".join((field,"_set"))).filter(**filters['includes']).exclude(**filters['excludes'])
     except:
         pass
     
@@ -626,7 +626,8 @@ class AttributeMapping(models.Model):
         return ( ' '.join((self.attr, self.predicate )))
 
 class EmbeddedMapping(models.Model):
-    """
+    """ embedded mapping using a template
+    
         records a mapping for a complex data structure
     """
     scope = models.ForeignKey(ObjectMapping)
@@ -638,6 +639,19 @@ class EmbeddedMapping(models.Model):
     def __unicode__(self):
         return ( ' '.join(('struct:',self.attr, self.predicate )))
 
+class ChainedMapping(models.Model):
+    """ nested mapping using another mapping
+    
+        Chains to a specific mapping to nest the resulting graph within the current serialisation
+    """
+    scope = models.ForeignKey(ObjectMapping,editable=False, )
+    attr = EXPR_Field(_(u'source attribute'),help_text=_(u'attribute - if empty nothing generated, if multivalued will be iterated over'))
+    predicate = CURIE_Field(_(u'predicate'),blank=False,editable=True, help_text=_(u'URI or CURIE. Use :prop.prop.prop form to select a property of the mapped object to use asthe predicate'))
+    chainedMapping = models.ForeignKey(ObjectMapping, blank=False,editable=True, related_name='chained',help_text=_(u'Mapping to nest, for each value of attribute. may be recursive'))
+    
+    def __unicode__(self):
+        return ( ' '.join(('chained mapping:',self.attr, self.predicate, self.chainedMapping.name )))
+        
 class ConfigVar(models.Model):
     """ Sets a configuration variable for ServiceBindings templates """
     var=models.CharField(max_length=16, null=False, blank=False , verbose_name='Variable name')

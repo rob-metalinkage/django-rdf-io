@@ -28,10 +28,18 @@ class EmbeddedMappingInline(admin.TabularInline):
     #fields = ('code','namespace')
     # related_search_fields = {'label' : ('name','slug')}
     extra=1 
+ 
+class ChainedMappingInline(admin.TabularInline):
+    model = ChainedMapping
+    fk_name='scope'
+    # readonly_fields = ('slug','created')
+    fields = ('attr','predicate','chainedMapping')
+    # related_search_fields = {'label' : ('name','slug')}
+    extra=1 
     
 class ObjectMappingAdmin(admin.ModelAdmin):
     search_fields = ['content_type__name' ]
-    inlines = [   AttributeMappingInline, EmbeddedMappingInline]
+    inlines = [   AttributeMappingInline, ChainedMappingInline, EmbeddedMappingInline]
     filter_horizontal = ('obj_type',)
     pass
     
@@ -68,8 +76,8 @@ admin.site.register(Namespace, NamespaceAdmin)
 admin.site.register(GenericMetaProp,GenericMetaPropAdmin)
 admin.site.register(ObjectType, ObjectTypeAdmin)
 admin.site.register(ObjectMapping, ObjectMappingAdmin)
-admin.site.register(AttributeMapping, AttributeMappingAdmin)
-admin.site.register(EmbeddedMapping, EmbeddedMappingAdmin)
+#admin.site.register(AttributeMapping, AttributeMappingAdmin)
+#admin.site.register(EmbeddedMapping, EmbeddedMappingAdmin)
 admin.site.register(ImportedResource, ImportedResourceAdmin)
 
 admin.site.register(ServiceBinding, ServiceBindingAdmin)

@@ -92,8 +92,10 @@ def _tordf(request,model,id,key):
     
     # ok so object exists and is mappable, better get down to it..
  
-    includemembers = False
-    
+    includemembers = True
+    if request.GET.get('skip') :
+        includemembers = request.GET.get('skip') != 'True'
+        
     gr = Graph()
 #    import pdb; pdb.set_trace()
 #    ns_mgr = NamespaceManager(Graph())
@@ -170,7 +172,7 @@ def publish(obj, model, oml, rdfstore=None ):
 #    ns_mgr = NamespaceManager(Graph())
 #    gr.namespace_manager = ns_mgr
     try:
-        gr = build_rdf(gr, obj, oml, False)
+        gr = build_rdf(gr, obj, oml, True)
     except Exception as e:
         raise Exception("Error during serialisation: " + str(e) )
    
@@ -237,7 +239,12 @@ def build_rdf( gr,obj, oml, includemembers ) :
                 for predicate,valuelist in getattr_tuple_path(obj,(am.predicate[1:],am.attr)):
                     for value in valuelist:
                         _add_vals(gr, obj, subject, str(predicate), quote(value) , am.is_resource)
-                    
+        
+        if includemembers:
+            for cm in ChainedMapping.objects.filter(scope=om) :
+                for val in getattr_path(obj,cm.attr):
+                    build_rdf( gr,val, (cm.chainedMapping,), includemembers )
+        
         for em in EmbeddedMapping.objects.filter(scope=om) :
             try:
                 # three options - scalar value in which case attributes relative to basic obj, a mulitvalue obj or we have to look for related objects
