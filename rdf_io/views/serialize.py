@@ -192,10 +192,10 @@ def publish(obj, model, oml, rdfstore=None ):
                 raise Exception( "service type not supported when post processing inferences")
             next_binding = next_binding.next_service
 
-    
-    return push_to_store( None, model, obj, gr )
+    if  ServiceBinding.get_service_bindings(model,(ServiceBinding.PERSIST_UPDATE, ServiceBinding.PERSIST_REPLACE, ServiceBinding.PERSIST_CREATE )) :
+        return push_to_store( None, model, obj, gr )
 
-   
+    return HttpResponse("No default persistence defined, inferencing service chains need to explicitly persist relevant artefacts", 200)
    
 def build_rdf( gr,obj, oml, includemembers ) :  
 
