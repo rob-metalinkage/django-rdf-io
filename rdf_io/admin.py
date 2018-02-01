@@ -67,8 +67,43 @@ class ImportedResourceAdmin(admin.ModelAdmin):
     search_fields = ['description','file','remote']    
     pass
 
+    
+class ObjectBoundListFilter(admin.SimpleListFilter):
+    title='Chain Start by Object Type'
+    parameter_name = 'objtype'
+    
+    def lookups(self, request, model_admin):
+        chains = ServiceBinding.objects.filter(object_mapping__isnull=False)        
+        return set([(c.object_mapping.first().content_type.model, c.object_mapping.first().content_type.model) for c in chains])
+        
+    def queryset(self, request, qs):
+        try:
+            #import pdb; pdb.set_trace()
+            if request.GET.get('objtype') :
+                qs= qs.filter(object_mapping__content_type__model = request.GET.get('objtype'))
+        except:
+            pass
+        return qs
+
+class ChainListFilter(admin.SimpleListFilter):
+    title='Chain members'
+    parameter_name = 'chain_id'
+    
+    def lookups(self, request, model_admin):
+        chains = ServiceBinding.objects.filter(object_mapping__isnull=False)        
+        return [(c.id, c.object_mapping.first().name) for c in chains]
+        
+    def queryset(self, request, qs):
+        try:
+            pass
+            #qs= qs.filter(object_mapping__id = request.GET.get('chain_id'))
+        except:
+            pass
+        return qs
+        
 class ServiceBindingAdmin(admin.ModelAdmin) :
-    list_display = ('title', 'binding_type')
+    list_display = ('title', 'binding_type', 'next_service')
+    list_filter=(ObjectBoundListFilter,ChainListFilter,'binding_type')
     search_fields = ['title','binding_type']    
     pass
     
