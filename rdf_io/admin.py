@@ -73,7 +73,7 @@ class ObjectBoundListFilter(admin.SimpleListFilter):
     parameter_name = 'objtype'
     
     def lookups(self, request, model_admin):
-        chains = ServiceBinding.objects.filter(object_mapping__isnull=False)        
+        chains = ServiceBinding.objects.filter(object_mapping__content_type__isnull=False)        
         return set([(c.object_mapping.first().content_type.model, c.object_mapping.first().content_type.model) for c in chains])
         
     def queryset(self, request, qs):
