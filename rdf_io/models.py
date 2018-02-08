@@ -733,7 +733,10 @@ class ServiceBinding(models.Model):
     @staticmethod 
     def get_service_bindings(model,bindingtypes):
         ct = ContentType.objects.get(model=model)
-        return ServiceBinding.objects.filter(object_mapping__content_type=ct, binding_type__in=bindingtypes)
+        if bindingtypes:
+            return ServiceBinding.objects.filter(object_mapping__content_type=ct, binding_type__in=bindingtypes)
+        else:
+            return ServiceBinding.objects.filter(object_mapping__content_type=ct)
     
 class ImportedResource(models.Model):
     TYPE_RULE='RULE'

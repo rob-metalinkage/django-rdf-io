@@ -178,9 +178,9 @@ def publish(obj, model, oml, rdfstore=None ):
    
 #    curl -X POST -H "Content-Type: text/turtle" -d @- http://192.168.56.151:8080/marmotta/import/upload?context=http://mapstory.org/def/featuretypes/gazetteer 
     
-    for inferencer in ServiceBinding.get_service_bindings(model,(ServiceBinding.INFERENCE,) ) :
-        newgr = inference(model, obj, inferencer, gr)
-        next_binding = inferencer.next_service
+    inference_chain_results = []
+    for next_binding in ServiceBinding.get_service_bindings(model,None) :
+        newgr = gr  # start off with original RDF graph for each new chain
         while next_binding :
             if next_binding.binding_type == ServiceBinding.INFERENCE :
                 newgr = inference(model, obj, next_binding, newgr)
@@ -190,12 +190,14 @@ def publish(obj, model, oml, rdfstore=None ):
                rdf_delete( next_binding, model, obj )
             else:
                 raise Exception( "service type not supported when post processing inferences")
+            inference_chain_results.append(str( next_binding) )
             next_binding = next_binding.next_service
+            
+    if inference_chain_results:
+        return HttpResponse( '\n'.join( inference_chain_results), 200 )
+        
 
-    if  ServiceBinding.get_service_bindings(model,(ServiceBinding.PERSIST_UPDATE, ServiceBinding.PERSIST_REPLACE, ServiceBinding.PERSIST_CREATE )) :
-        return push_to_store( None, model, obj, gr )
-
-    return HttpResponse("No default persistence defined, inferencing service chains need to explicitly persist relevant artefacts", 200)
+    return HttpResponse("No service chains defined", 200)
    
 def build_rdf( gr,obj, oml, includemembers ) :  
 
