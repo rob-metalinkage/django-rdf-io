@@ -90,7 +90,7 @@ class ChainListFilter(admin.SimpleListFilter):
     parameter_name = 'chain_id'
     
     def lookups(self, request, model_admin):
-        chains = ServiceBinding.objects.filter(object_mapping__isnull=False)        
+        chains = ServiceBinding.objects.filter(object_mapping__name__isnull=False)        
         return [(c.id, c.object_mapping.first().name) for c in chains]
         
     def queryset(self, request, qs):
