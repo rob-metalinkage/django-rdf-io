@@ -241,7 +241,10 @@ def _getattr_related(rootobj,obj, fields, pathlist=None, extravals={} ):
         return itertools.chain(*(_getattr_related(rootobj,xx, fields[:], pathlist=pathlist) for xx in relobjs.all()))
 #        !list(itertools.chain(*([[1],[2]])))
     except:
-        return _getattr_related(obj,val, fields, pathlist=pathlist,extravals=extravals)
+        try:
+            return _getattr_related(obj,val, fields, pathlist=pathlist,extravals=extravals)
+        except:
+            raise ValueError( "Object type %s has no related model %s " % ( str(type(obj)), str(fields) ))
 
 def _get_relobjs(obj,field,filters=None):
     """Find related objects that match
