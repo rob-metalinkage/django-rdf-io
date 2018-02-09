@@ -26,7 +26,7 @@ from rdflib import Graph,namespace
 from rdflib.term import URIRef, Literal
 from rdflib.namespace import NamespaceManager,RDF
 
-
+import sys
 
 import logging
 logger = logging.getLogger(__name__)
@@ -163,6 +163,12 @@ def get_rdfstore(model, name=None ):
         # pass  # use default then
     
     # return rdfstore
+
+def publish_set(queryset, model):
+    """ publish select set of objects of type "model" """
+    oml = ObjectMapping.objects.filter(content_type__model=model)
+    for obj in queryset :
+        publish( obj, model, oml)
     
 def publish(obj, model, oml, rdfstore=None ):
       
@@ -174,6 +180,7 @@ def publish(obj, model, oml, rdfstore=None ):
     try:
         gr = build_rdf(gr, obj, oml, True)
     except Exception as e:
+        print(sys.exc_info()[0])
         raise Exception("Error during serialisation: " + str(e) )
    
 #    curl -X POST -H "Content-Type: text/turtle" -d @- http://192.168.56.151:8080/marmotta/import/upload?context=http://mapstory.org/def/featuretypes/gazetteer 
