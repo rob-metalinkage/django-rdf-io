@@ -8,8 +8,16 @@ class GenericMetaPropInline(admin.TabularInline):
     # related_search_fields = {'label' : ('name','slug')}
     extra=1 
     
-
+ 
+def force_prefix_use(modeladmin, request, queryset):
+    """ update selected Metaprops to use CURIE form with registered prefix """
+    for obj in queryset.all() :
+        obj.save()
+force_prefix_use.short_description = "update selected Metaprops to use CURIE form with registered prefix"       
+ 
 class GenericMetaPropAdmin(admin.ModelAdmin):
+    search_fields = ['propname' ]
+    actions= [force_prefix_use]
     pass
 
 class ObjectTypeAdmin(admin.ModelAdmin):
@@ -50,10 +58,11 @@ class AttributeMappingAdmin(admin.ModelAdmin):
 class EmbeddedMappingAdmin(admin.ModelAdmin):
     pass
 
-    
+
 class NamespaceAdmin(admin.ModelAdmin):
     list_display = ('uri','prefix','notes')
     fields = ('uri','prefix','notes')
+    search_fields = ['uri','prefix' ]
 #    related_search_fields = {'concept' : ('pref_label','definition')}
     #list_editable = ('name','slug')
     search_fields = ['uri','prefix']    
