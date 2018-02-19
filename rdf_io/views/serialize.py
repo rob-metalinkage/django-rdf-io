@@ -326,14 +326,7 @@ def build_rdf( gr,obj, oml, includemembers ) :
                             
 def _add_vals(gr, obj, subject, predicate, attr, is_resource ) :       
             if type(attr) == float or attr[0] in '\'\"' : # then a literal
-                if is_resource :
-                    gr.add( (subject, as_resource(gr,predicate) , as_resource(gr,attr) ) )
-                else:
-                    try:
-                        (str,lang) = attr.split('@')
-                        gr.add( (subject, as_resource(gr,predicate) , Literal(dequote(str),lang=lang) ))
-                    except:
-                        gr.add( (subject, as_resource(gr,predicate) , Literal(dequote(attr)) ))
+                gr.add( (subject, as_resource(gr,predicate) , makenode(gr,attr,is_resource) ) )
             else :
                 values = getattr_path(obj,attr)
                 for value in values :

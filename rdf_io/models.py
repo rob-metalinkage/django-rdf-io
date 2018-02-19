@@ -757,10 +757,11 @@ class ImportedResource(models.Model):
     
     graph = None
     
-    resource_type=models.CharField(choices=TYPE_CHOICES,max_length=10,
+    
+    resource_type=models.CharField(choices=TYPE_CHOICES,default=TYPE_INSTANCE,max_length=10,
        help_text='Determines the post processing applied to the uploaded file')   
     target_repo=models.ForeignKey(ServiceBinding, help_text='choose binding to optional RDF repository' , null=True, blank=True)
-    description = models.CharField(max_length=255, blank=True)
+    description = models.CharField(verbose_name='ImportedResource Name',max_length=255, blank=True)
     file = models.FileField(upload_to='resources/',blank=True)
     remote = models.URLField(max_length=2000,blank=True,verbose_name='Remote RDF source URI') 
     uploaded_at = models.DateTimeField(auto_now_add=True)
@@ -779,7 +780,9 @@ class ImportedResource(models.Model):
             print "TODO - delete remote resource in repo %s" % self.target_repo
         super(ImportedResource, self).delete(*args,**kwargs)
     
-    def save(self,*args,**kwargs):  
+    def save(self,*args,**kwargs): 
+        if not self.description:
+            self.description = self.__unicode__()
         super(ImportedResource, self).save(*args,**kwargs)
         if self.target_repo :
             push_to_store(self.target_repo, 'ImportedResource', self, self.get_graph())
