@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+from django.utils.encoding import python_2_unicode_compatible
 from django.db import models
 from django.conf import settings
 
@@ -740,7 +742,8 @@ class ServiceBinding(models.Model):
             return ServiceBinding.objects.filter(object_mapping__content_type=ct, binding_type__in=bindingtypes)
         else:
             return ServiceBinding.objects.filter(object_mapping__content_type=ct)
-    
+
+@python_2_unicode_compatible              
 class ImportedResource(models.Model):
     TYPE_RULE='RULE'
     TYPE_MODEL='CLASS'
@@ -769,7 +772,10 @@ class ImportedResource(models.Model):
  
     def __unicode__(self):
         return ( ' '.join( filter(None,(self.resource_type,':', self.file.__unicode__(), self.remote ))))
-    
+ 
+    def __str__(self):
+        return ( ' '.join( filter(None,(self.resource_type,':', self.file.__unicode__(), self.remote ))))
+        
 #    def clean(self):
 #        import fields; pdb.set_trace()
         
