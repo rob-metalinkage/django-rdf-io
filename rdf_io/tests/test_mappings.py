@@ -6,6 +6,8 @@ from rdflib import Literal, URIRef, Graph, XSD
 class SerialisationSetupTestCase(TestCase):
     testmapping = None
     testobj = None
+    attachable = None
+    
     def setUp(self):
         (object_type,created) = ObjectType.objects.get_or_create(uri="http://metalinkage.com.au/rdfio/ObjectMapping", defaults = { "label" : "Test RDF target type" })
         content_type = ContentType.objects.get(app_label="rdf_io",model="objectmapping")
@@ -35,8 +37,9 @@ class SerialisationSetupTestCase(TestCase):
         # generic metadata properties
         ns,created = Namespace.objects.get_or_create(uri='http://example.org/', prefix='eg')
         gmp,created = GenericMetaProp.objects.get_or_create(namespace=ns, propname="metaprop")
-        attached,created = AttachedMetadata.objects.get_or_create(metaprop=gmp,value="something to change during testing")
+        attachable,created = AttachedMetadata.objects.get_or_create(metaprop=gmp,value="something to change during testing")
 
+        self.attachable = attachable
 
 class MetaObjectsTestCase(SerialisationSetupTestCase):
     """ Tests basic object behaviours needed for RDF content handling """
@@ -78,7 +81,8 @@ class MetaObjectsTestCase(SerialisationSetupTestCase):
     
     def test_node_string_datatype_uri(self):
         self.assertEqual(makenode(Graph(),"frog^^<http://eg.org>"),Literal("frog",datatype=URIRef('http://eg.org')) )
-        
+              
+
     def test_quote_string(self):
         self.assertEqual(quote('frog'), '"frog"')
         
