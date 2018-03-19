@@ -758,7 +758,7 @@ class ImportedResource(models.Model):
       ( TYPE_VALIDATION, 'Validation rule - for future use' ), 
     )
     
-    graph = None
+    savedgraph = None
     
     
     resource_type=models.CharField(choices=TYPE_CHOICES,default=TYPE_INSTANCE,max_length=10,
@@ -767,6 +767,7 @@ class ImportedResource(models.Model):
     description = models.CharField(verbose_name='ImportedResource Name',max_length=255, blank=True)
     file = models.FileField(upload_to='resources/',blank=True)
     remote = models.URLField(max_length=2000,blank=True,verbose_name='Remote RDF source URI') 
+    graph = models.URLField(max_length=2000,blank=True,verbose_name='Target RDF graph name') 
     uploaded_at = models.DateTimeField(auto_now_add=True)
     # add per user details?
  
@@ -787,6 +788,7 @@ class ImportedResource(models.Model):
         super(ImportedResource, self).delete(*args,**kwargs)
     
     def save(self,*args,**kwargs): 
+        #import pdb; pdb.set_trace()
         if not self.description:
             self.description = self.__unicode__()
         super(ImportedResource, self).save(*args,**kwargs)
@@ -795,15 +797,15 @@ class ImportedResource(models.Model):
 
     
     def get_graph(self):
-        if self.graph :
+        if self.savedgraph :
             pass # just return it
         elif self.file :
             format = rdflib.util.guess_format(self.file.name)
-            self.graph = rdflib.Graph().parse(self.file.name,  format=format )
+            self.savedgraph = rdflib.Graph().parse(self.file.name,  format=format )
         elif self.remote :
             format = rdflib.util.guess_format(self.remote)
-            self.graph = rdflib.Graph().parse(self.remote,  format=format )
-        return self.graph
+            self.savedgraph = rdflib.Graph().parse(self.remote,  format=format )
+        return self.savedgraph
         
     def getPathVal(self,gr,rootsubject,path):
         
