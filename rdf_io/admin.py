@@ -72,7 +72,7 @@ class ConfigVarAdmin(admin.ModelAdmin):
     pass
     
 class ImportedResourceAdmin(admin.ModelAdmin):
-#    list_display = ('file', 'remote', 'resource_type')
+    list_display = ('description', '__unicode__')
     search_fields = ['description','file','remote']    
     pass
 
