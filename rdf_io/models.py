@@ -767,7 +767,7 @@ class ImportedResource(models.Model):
     description = models.CharField(verbose_name='ImportedResource Name',max_length=255, blank=True)
     file = models.FileField(upload_to='resources/',blank=True)
     remote = models.URLField(max_length=2000,blank=True,verbose_name='Remote RDF source URI') 
-    graph = models.URLField(max_length=2000,blank=True,verbose_name='Target RDF graph name') 
+    graph = models.URLField(max_length=2000,blank=True,null=True,verbose_name='Target RDF graph name') 
     uploaded_at = models.DateTimeField(auto_now_add=True)
     # add per user details?
  
