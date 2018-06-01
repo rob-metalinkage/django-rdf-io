@@ -79,7 +79,9 @@ def dequote(s):
     todo: Make sure the pair of quotes match.
     If a matching pair of quotes is not found, return the string unchanged.
     """
-    if  s.startswith(("'", '"', '<')):
+    if s.startswith('"""') :
+        return s[3:-3]
+    elif  s.startswith(("'", '"', '<')):
         return s[1:-1]
     return s
 
@@ -370,8 +372,9 @@ def as_resource(gr,curie) :
         nsuri = Namespace.getNamespace(ns)
         if nsuri :
             gr.namespace_manager.bind( str(ns), namespace.Namespace(nsuri), override=False)
- 
-        return URIRef("".join((str(nsuri),value)))
+            return URIRef("".join((str(nsuri),value)))
+        else :
+            return URIRef(cleaned) 
     except:
         raise ValueError("prefix " + ns + "not recognised")
 
@@ -399,7 +402,7 @@ def makenode(gr,value, is_resource=False):
                     typeuri = TYPES[valtype]
                 except:
                     typeuri = as_resource(gr,valtype)
-                return Literal(value,datatype=typeuri)
+                return Literal(dequote(value),datatype=typeuri)
             except:
                 try :
                     (value,valtype) = value.split("@")

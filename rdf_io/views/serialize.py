@@ -247,7 +247,13 @@ def build_rdf( gr,obj, oml, includemembers ) :
             else:
                 for predicate,valuelist in getattr_tuple_path(obj,(am.predicate[1:],am.attr)):
                     for value in valuelist:
-                        _add_vals(gr, obj, subject, str(predicate), quote(value) , am.is_resource)
+                        is_resource = value[0] == '<' and value[-1:] == '>'
+                        if is_resource :
+                            # brute force quote - ignoring any string @lang or ^^ type stuff quote() handles
+                            value = value[1:-1].join(('"','"'))
+                        else :
+                            value = quote(value) 
+                        _add_vals(gr, obj, subject, str(predicate), value, is_resource)
         
         if includemembers:
             for cm in ChainedMapping.objects.filter(scope=om) :
