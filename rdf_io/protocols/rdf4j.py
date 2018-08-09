@@ -16,7 +16,7 @@ def rdf4j_push(rdfstore, model, obj, gr, mode ):
         result = requests.put( resttgt, headers=headers , data=gr.serialize(format="turtle"))
     elif mode == ServiceBinding.PERSIST_UPDATE :
         result = requests.post( resttgt, headers=headers , data=gr.serialize(format="turtle"))
-    elif mode == ServiceBinding.PERSIST_DELETE :
+    elif mode == ServiceBinding.PERSIST_PURGE :
         result = requests.delete( resttgt, headers=headers )
     else:
         raise Exception ("RDF4J store does not yet support mode %s" % (mode,))
