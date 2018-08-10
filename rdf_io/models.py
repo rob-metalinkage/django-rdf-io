@@ -792,7 +792,7 @@ class ImportedResource(models.Model):
         super(ImportedResource, self).delete(*args,**kwargs)
     
     def save(self,*args,**kwargs): 
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
         if not self.description:
             self.description = self.__unicode__()
         super(ImportedResource, self).save(*args,**kwargs)
