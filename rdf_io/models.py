@@ -539,7 +539,7 @@ class GenericMetaProp(models.Model) :
     objects = GenericMetaPropManager()
     namespace = models.ForeignKey(Namespace,blank=True, null=True, verbose_name=_(u'namespace'))
     propname =  models.CharField(_(u'name'),blank=True,max_length=250,editable=True)
-    uri = CURIE_Field(blank=True)
+    uri = CURIE_Field(blank=True, unique=True)
     definition  = models.TextField(_(u'definition'), blank=True)
     def natural_key(self):
         return  ":".join((self.namespace.prefix,self.propname)) if self.namespace else self.uri
@@ -563,7 +563,7 @@ class GenericMetaProp(models.Model) :
                 pass
                 
         super(GenericMetaProp, self).save(*args,**kwargs)
-                
+
 
 class AttachedMetadata(models.Model):
     """ metadata property that can be attached using subclass that specificies the subject property FK bining 
