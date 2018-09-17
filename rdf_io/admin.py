@@ -70,10 +70,22 @@ class NamespaceAdmin(admin.ModelAdmin):
     
 class ConfigVarAdmin(admin.ModelAdmin):
     pass
+
+class ResourceMetaInline(admin.TabularInline):
+    model = ResourceMeta
+    verbose_name = 'Additional property'
+    verbose_name_plural = 'Additional properties'
+#    list_fields = ('pref_label', )
+    show_change_link = True
+    max_num = 20
+    fields = ('subject','metaprop','value')
+ #   list_display = ('pref_label',)
+    extra = 1
     
 class ImportedResourceAdmin(admin.ModelAdmin):
-    list_display = ('description', '__unicode__')
-    search_fields = ['description','file','remote']    
+    list_display = ('description', 'subtype', '__unicode__')
+    search_fields = ['description','file','remote']  
+    inlines = [ ResourceMetaInline , ]    
     pass
 
     

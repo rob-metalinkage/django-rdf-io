@@ -662,10 +662,16 @@ class ChainedMapping(models.Model):
         return ( ' '.join(('chained mapping:',self.attr, self.predicate, self.chainedMapping.name )))
         
 class ConfigVar(models.Model):
+    MODE_CHOICES = (
+      ( 'REVIEW', 'Persist results in mode for review'),
+      ( 'TEST', 'Does not persist results' ),
+      ( 'PUBLISH' , 'Data published to final target' )
+    )
     """ Sets a configuration variable for ServiceBindings templates """
     var=models.CharField(max_length=16, null=False, blank=False , verbose_name='Variable name')
     value=models.CharField(max_length=255, null=False, blank=True , verbose_name='Variable value')
-
+    mode=models.CharField( verbose_name='Mode scope', choices=MODE_CHOICES,null=True,blank=True,max_length=10 )
+    
     def __unicode__(self):
         return ( ' '.join(('var:',self.var, ' = ', self.value )))
     
@@ -747,6 +753,12 @@ class ServiceBinding(models.Model):
         else:
             return ServiceBinding.objects.filter(object_mapping__content_type=ct)
 
+class ResourceMeta(AttachedMetadata):
+    """
+        extensible metadata using rdf_io managed reusable generic metadata properties
+    """
+    subject       = models.ForeignKey("ImportedResource", related_name="metaprops")  
+    
 @python_2_unicode_compatible              
 class ImportedResource(models.Model):
     TYPE_RULE='RULE'
@@ -764,10 +776,11 @@ class ImportedResource(models.Model):
     
     savedgraph = None
     
+    subtype = models.ForeignKey(ContentType,editable=False,null=True,verbose_name='Specific Type')
     
     resource_type=models.CharField(choices=TYPE_CHOICES,default=TYPE_INSTANCE,max_length=10,
-       help_text='Determines the post processing applied to the uploaded file')   
-    target_repo=models.ForeignKey(ServiceBinding, verbose_name='Service binding',help_text='choose binding to optional RDF repository' , null=True, blank=True)
+    help_text='Determines the post processing applied to the uploaded file')   
+    target_repo=models.ForeignKey(ServiceBinding, verbose_name='Data disposition',help_text='This is a service binding for the data object, in addition to any service bindings applied to the Imported Resource metadata.' , null=True, blank=True)
     description = models.CharField(verbose_name='ImportedResource Name',max_length=255, blank=True)
     file = models.FileField(upload_to='resources/',blank=True)
     remote = models.URLField(max_length=2000,blank=True,verbose_name='Remote RDF source URI') 
@@ -793,6 +806,8 @@ class ImportedResource(models.Model):
     
     def save(self,*args,**kwargs): 
         #import pdb; pdb.set_trace()
+        if(not self.subtype):
+            self.subtype = ContentType.objects.get_for_model(self.__class__)
         if not self.description:
             self.description = self.__unicode__()
         super(ImportedResource, self).save(*args,**kwargs)
