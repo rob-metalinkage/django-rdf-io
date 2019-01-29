@@ -576,7 +576,10 @@ class AttachedMetadata(models.Model):
         return unicode(self.metaprop)   
     def getRDFValue(self):
         """ returns value in appropriate datatype """
-        return makenode(value)    
+        return makenode(value)
+
+    class Meta:
+        abstract = True        
         
 class ObjectTypeManager(models.Manager):
     def get_by_natural_key(self, uri):
