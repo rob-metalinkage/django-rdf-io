@@ -85,7 +85,7 @@ when an object is saved, any enabled inferencing ServiceBindings will be applied
 
 NOTE: Inferencing rules may need to be more complex if a separate inferencing store is set up, but some of the data needed for inferencing resides in the main target repository. Using SPIN, this leads to constructs like:
 
-'''
+```
 			 WHERE {
 				?mainrepo a service:Repo  .
 
@@ -99,10 +99,11 @@ NOTE: Inferencing rules may need to be more complex if a separate inferencing st
 
 						}
 					}
-					
-where ?mainrepo is an object loaded to the inferencer to define the target data store, allowing such a rule to be reusable.
+
+```
+
+Where `?mainrepo` is an object loaded to the inferencer to define the target data store, allowing such a rule to be reusable.
  
-'''
 
 ### Object Mappings
 Mappings to RDF are done for Django models. Each mapping consists of:
