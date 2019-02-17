@@ -502,7 +502,7 @@ class Namespace(models.Model) :
     notes = models.TextField(_(u'change note'),blank=True)
 
     def natural_key(self):
-        return(self.uri)
+        return(self.uri,)
     
     def get_base_uri(self):
         return self.uri[0:-1]
@@ -542,7 +542,7 @@ class GenericMetaProp(models.Model) :
     uri = CURIE_Field(blank=True, unique=True)
     definition  = models.TextField(_(u'definition'), blank=True)
     def natural_key(self):
-        return  ":".join((self.namespace.prefix,self.propname)) if self.namespace else self.uri
+        return  ( ":".join((self.namespace.prefix,self.propname)) if self.namespace else self.uri , )
     def __unicode__(self):              # __unicode__ on Python 2
         return self.natural_key() 
     def asURI(self):
@@ -595,7 +595,7 @@ class ObjectType(models.Model):
     label = models.CharField(_(u'Label'),blank=False,max_length=250,editable=True)
     
     def natural_key(self):
-        return self.uri
+        return (self.uri,)
     
     # check short form is registered
     def __unicode__(self):              # __unicode__ on Python 2
@@ -618,7 +618,7 @@ class ObjectMapping(models.Model):
     obj_type = models.ManyToManyField(ObjectType, help_text=_(u'set this to generate a object rdf:type X statement' ))
     filter = FILTER_Field(_(u'Filter'), null=True, blank=True ,editable=True)
     def natural_key(self):
-        return self.name    
+        return (self.name,)    
   
     def __unicode__(self):              # __unicode__ on Python 2
         return self.name 
@@ -822,6 +822,7 @@ class ImportedResource(models.Model):
             publish( self, 'importedresource', oml)
     
     def get_graph(self):
+        import pdb; pdb.set_trace()
         if self.savedgraph :
             pass # just return it
         elif self.file :
