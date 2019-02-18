@@ -623,6 +623,31 @@ class ObjectMapping(models.Model):
     def __unicode__(self):              # __unicode__ on Python 2
         return self.name 
  
+    @staticmethod
+    def new_mapping(object_type,content_type_label, title, idfield, tgt,filter=None, auto_push=False, app_label=None):
+        if not app_label :
+            try:
+                (app_label,content_type_label) = content_type_label.split(':')
+            except:
+                pass # hope we can find it?
+        content_type = ContentType.objects.get(app_label=app_label.lower(),model=content_type_label.lower())
+        defaults =         { "auto_push" : auto_push , 
+              "id_attr" : idfield,
+              "target_uri_expr" : tgt,
+              "content_type" : content_type
+            }
+        if filter :
+            defaults['filter']=filter
+            
+        (pm,created) =   ObjectMapping.objects.get_or_create(name=title, defaults =defaults)
+        if not created :
+            AttributeMapping.objects.filter(scope=pm).delete()
+        
+        pm.obj_type.add(object_type)
+        pm.save()    
+
+        return pm   
+ 
  
 class AttributeMapping(models.Model):
     """
