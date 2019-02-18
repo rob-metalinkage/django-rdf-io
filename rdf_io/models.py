@@ -544,7 +544,7 @@ class GenericMetaProp(models.Model) :
     def natural_key(self):
         return  ( ":".join((self.namespace.prefix,self.propname)) if self.namespace else self.uri , )
     def __unicode__(self):              # __unicode__ on Python 2
-        return self.natural_key() 
+        return self.natural_key()[0]
     def asURI(self):
         """ Returns fully qualified uri form of property """
         return uri
@@ -573,13 +573,14 @@ class AttachedMetadata(models.Model):
     metaprop   =  models.ForeignKey(GenericMetaProp,verbose_name='property') 
     value = models.CharField(_(u'value'),max_length=2000)
     def __unicode__(self):
-        return unicode(self.metaprop)   
+        return unicode(self.metaprop.__unicode__())   
     def getRDFValue(self):
         """ returns value in appropriate datatype """
         return makenode(value)
 
     class Meta:
-        abstract = True        
+        pass
+ #       abstract = True        
         
 class ObjectTypeManager(models.Manager):
     def get_by_natural_key(self, uri):
@@ -847,7 +848,7 @@ class ImportedResource(models.Model):
             publish( self, 'importedresource', oml)
     
     def get_graph(self):
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         if self.savedgraph :
             pass # just return it
         elif self.file :
