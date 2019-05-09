@@ -393,7 +393,7 @@ def makenode(gr,value, is_resource=False):
     """ make a RDF node from a string representation
     
     probably ought to be able to find this function in rdflib but seems hidden"""
-    if is_resource or value[0] == '<' and value [-1] == '>' :
+    if is_resource or value[0] == '<' and '<' not in value[1:] and value [-1] == '>' :
         return as_resource(gr,value)
     else:
         try:
