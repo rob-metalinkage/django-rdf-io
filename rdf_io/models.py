@@ -827,7 +827,7 @@ class ImportedResource(models.Model):
 #        import fields; pdb.set_trace()
         
     def delete(self,*args,**kwargs):
-        if os.path.isfile(self.file.path):
+        if self.file and os.path.isfile(self.file.path):
             os.remove(self.file.path)
         if self.target_repo :
             print "TODO - delete remote resource in repo %s" % self.target_repo
