@@ -164,9 +164,18 @@ def get_rdfstore(model, name=None ):
     
     # return rdfstore
 
-def publish_set(queryset, model):
+def publish_set(queryset, model,check=False):
     """ publish select set of objects of type "model" """
     oml = ObjectMapping.objects.filter(content_type__model=model)
     for obj in queryset :
+        if check:
+            try:
+                print ("checking ", obj.uri)
+                resp = u.urlopen(obj.uri)
+                if resp.getcode() == 200 :
+                    continue
+            except Exception as e :
+                print(e)
+        print ("publishing ", obj )       
         publish( obj, model, oml)
     
