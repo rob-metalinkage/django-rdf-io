@@ -897,6 +897,7 @@ def publish(obj, model, oml, rdfstore=None ):
     for next_binding in ServiceBinding.get_service_bindings(model,None) :
         newgr = gr  # start off with original RDF graph for each new chain
         while next_binding :
+            print ( next_binding.__unicode__() )
             if next_binding.binding_type == ServiceBinding.INFERENCE :
                 newgr = inference(model, obj, next_binding, newgr)
             elif next_binding.binding_type in ( ServiceBinding.PERSIST_UPDATE, ServiceBinding.PERSIST_REPLACE, ServiceBinding.PERSIST_CREATE ) :

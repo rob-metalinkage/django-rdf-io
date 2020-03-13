@@ -8,7 +8,7 @@ except ImportError:
     ez_setup.use_setuptools()
     from setuptools import setup, find_packages
 
-VERSION = '0.1'
+VERSION = '0.2'
 
 import os
 def read(fname):

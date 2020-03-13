@@ -170,12 +170,17 @@ def publish_set(queryset, model,check=False):
     for obj in queryset :
         if check:
             try:
-                print ("checking ", obj.uri)
+                yield ("<LI> checking %s " % (obj.uri,))
                 resp = u.urlopen(obj.uri)
                 if resp.getcode() == 200 :
                     continue
             except Exception as e :
-                print(e)
-        print ("publishing ", obj )       
-        publish( obj, model, oml)
+                yield("<UL><LI>%s</LI></UL>" % (str(e), ) )
+        yield ("<LI>publishing %s " % (obj,) )
+        try:
+            publish( obj, model, oml)
+            yield ("... Success")
+        except Exception as e :
+            yield("<UL><LI>%s</LI></UL>" % (str(e), ) ) 
+    yield('<A HREF=".">Continue</A>')
     

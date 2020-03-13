@@ -1,5 +1,7 @@
 from .models import *
 from django.contrib import admin
+from django.db.models import Q
+from django.contrib.contenttypes.models import ContentType
 
 class GenericMetaPropInline(admin.TabularInline):
     model = GenericMetaProp
@@ -81,12 +83,18 @@ class ResourceMetaInline(admin.TabularInline):
     fields = ('subject','metaprop','value')
  #   list_display = ('pref_label',)
     extra = 1
-    
+   
+IR = ContentType.objects.get_for_model(ImportedResource)
+   
 class ImportedResourceAdmin(admin.ModelAdmin):
     list_display = ('description', 'subtype', '__unicode__')
     search_fields = ['description','file','remote']  
     inlines = [ ResourceMetaInline , ]    
-    pass
+    
+    def get_queryset(self, request):
+        qs = super(ImportedResourceAdmin, self).get_queryset(request)
+        # import pdb; pdb.set_trace()
+        return qs.filter(Q(subtype__isnull=True) | Q(subtype=IR ))
 
     
 class ObjectBoundListFilter(admin.SimpleListFilter):
