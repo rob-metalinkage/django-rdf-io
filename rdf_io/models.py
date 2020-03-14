@@ -689,27 +689,33 @@ class ChainedMapping(models.Model):
     
     def __unicode__(self):
         return ( ' '.join(('chained mapping:',self.attr, self.predicate, self.chainedMapping.name )))
-        
-class ConfigVar(models.Model):
-    MODE_CHOICES = (
+ 
+MODE_CHOICES = (
       ( 'REVIEW', 'Persist results in mode for review'),
       ( 'TEST', 'Does not persist results' ),
       ( 'PUBLISH' , 'Data published to final target' )
     )
+    
+class ConfigVar(models.Model):
+    
     """ Sets a configuration variable for ServiceBindings templates """
     var=models.CharField(max_length=16, null=False, blank=False , verbose_name='Variable name')
     value=models.CharField(max_length=255, null=False, blank=True , verbose_name='Variable value')
     mode=models.CharField( verbose_name='Mode scope', choices=MODE_CHOICES,null=True,blank=True,max_length=10 )
     
     def __unicode__(self):
-        return ( ' '.join(('var:',self.var, ' = ', self.value )))
+        return ( ' '.join(('var:',self.var, ' (', str(self.mode), ') = ', self.value )))
     
     @staticmethod
-    def getval(var):
+    def getval(var,mode):
         try:
-            return ConfigVar.objects.filter(var=var).first().value
+            return ConfigVar.objects.filter(var=var, mode=mode).first().value
         except:
-            return None
+            try:
+                return ConfigVar.objects.filter(var=var, mode__isnull=True).first().value
+            except: 
+                pass
+        return None
 
 class ServiceBinding(models.Model):
     """ Binds object mappings to a RDF handling service 
@@ -876,11 +882,11 @@ class ImportedResource(models.Model):
         for res in results:
             return res[0]
     
-def publish(obj, model, oml, rdfstore=None ):
+def publish(obj, model, oml, rdfstore=None , mode=None):
       
        
     gr = Graph()
-#    import pdb; pdb.set_trace()
+    #import pdb; pdb.set_trace()
 #    ns_mgr = NamespaceManager(Graph())
 #    gr.namespace_manager = ns_mgr
     try:
@@ -899,11 +905,11 @@ def publish(obj, model, oml, rdfstore=None ):
         while next_binding :
             print ( next_binding.__unicode__() )
             if next_binding.binding_type == ServiceBinding.INFERENCE :
-                newgr = inference(model, obj, next_binding, newgr)
+                newgr = inference(model, obj, next_binding, newgr, mode)
             elif next_binding.binding_type in ( ServiceBinding.PERSIST_UPDATE, ServiceBinding.PERSIST_REPLACE, ServiceBinding.PERSIST_CREATE ) :
-                push_to_store( next_binding, model, obj, newgr )
+                push_to_store( next_binding, model, obj, newgr , mode)
             elif next_binding.binding_type == ServiceBinding.PERSIST_PURGE  :
-               rdf_delete( next_binding, model, obj )
+               rdf_delete( next_binding, model, obj , mode)
             else:
                 raise Exception( "service type not supported when post processing inferences")
             inference_chain_results.append(str( next_binding) )
@@ -924,7 +930,7 @@ def build_rdf( gr,obj, oml, includemembers ) :
         mappingsused += 1  
         try:
             tgt_id = getattr_path(obj,om.id_attr)[0]
-        except ValueError as e:
+        except (IndexError,ValueError) as e:
             raise ValueError("target id attribute {} not found".format( (om.id_attr ,)))
         if om.target_uri_expr[0] == '"' :   
             uribase = om.target_uri_expr[1:-1]
@@ -966,7 +972,10 @@ def build_rdf( gr,obj, oml, includemembers ) :
         if includemembers:
             for cm in ChainedMapping.objects.filter(scope=om) :
                 for val in getattr_path(obj,cm.attr):
-                    build_rdf( gr,val, (cm.chainedMapping,), includemembers )
+                    try:
+                        build_rdf( gr,val, (cm.chainedMapping,), includemembers )
+                    except:
+                        print( "Error serialising object %s as %s " % ( val, cm.attr ))
         
         for em in EmbeddedMapping.objects.filter(scope=om) :
             try:

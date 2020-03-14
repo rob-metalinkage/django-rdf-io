@@ -164,7 +164,7 @@ def get_rdfstore(model, name=None ):
     
     # return rdfstore
 
-def publish_set(queryset, model,check=False):
+def publish_set(queryset, model,check=False,mode='PUBLISH'):
     """ publish select set of objects of type "model" """
     oml = ObjectMapping.objects.filter(content_type__model=model)
     for obj in queryset :
@@ -178,9 +178,10 @@ def publish_set(queryset, model,check=False):
                 yield("<UL><LI>%s</LI></UL>" % (str(e), ) )
         yield ("<LI>publishing %s " % (obj,) )
         try:
-            publish( obj, model, oml)
+            # import pdb; pdb.set_trace()
+            publish( obj, model, oml,mode=mode)
             yield ("... Success")
         except Exception as e :
             yield("<UL><LI>%s</LI></UL>" % (str(e), ) ) 
-    yield('<A HREF=".">Continue</A>')
+    yield('<BR/><BR/><A HREF=".">Continue</A>')
     
