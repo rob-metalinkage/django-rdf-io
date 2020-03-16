@@ -165,7 +165,10 @@ def get_rdfstore(model, name=None ):
     # return rdfstore
 
 def publish_set(queryset, model,check=False,mode='PUBLISH'):
-    """ publish select set of objects of type "model" """
+    """ publish select set of objects of type "model" 
+    
+    Because this may be long running it is a status message generator
+    """
     oml = ObjectMapping.objects.filter(content_type__model=model)
     for obj in queryset :
         if check:
@@ -183,5 +186,5 @@ def publish_set(queryset, model,check=False,mode='PUBLISH'):
             yield ("... Success")
         except Exception as e :
             yield("<UL><LI>%s</LI></UL>" % (str(e), ) ) 
-    yield('<BR/><BR/><A HREF=".">Continue</A>')
+   
     
