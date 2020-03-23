@@ -24,7 +24,7 @@ from rdflib.term import URIRef, Literal
 from six import string_types
 from rdflib.namespace import NamespaceManager,RDF
 from rdf_io.protocols import *
-
+from django.db.models import Q
 
 # helpers
 def getattr_path(obj,path) :
@@ -716,6 +716,11 @@ class ConfigVar(models.Model):
             except: 
                 pass
         return None
+        
+    @staticmethod
+    def getvars(mode):
+        return ConfigVar.objects.filter(Q(mode=mode) | Q(mode__isnull=True)).order_by('var')
+        
 
 class ServiceBinding(models.Model):
     """ Binds object mappings to a RDF handling service 
