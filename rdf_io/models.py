@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from __future__ import print_function
 from django.utils.encoding import python_2_unicode_compatible
 from django.db import models
 from django.conf import settings
@@ -841,7 +842,7 @@ class ImportedResource(models.Model):
         if self.file and os.path.isfile(self.file.path):
             os.remove(self.file.path)
         if self.target_repo :
-            print "TODO - delete remote resource in repo %s" % self.target_repo
+            print("TODO - delete remote resource in repo %s" % self.target_repo)
         super(ImportedResource, self).delete(*args,**kwargs)
     
     def save(self,*args,**kwargs): 
@@ -1010,7 +1011,7 @@ def build_rdf( gr,obj, oml, includemembers ) :
                         elif expr.startswith("/") :
                             #value relativeto root obj  - retrieve and use as literal
                             try:
-                                expr = iter(getattr_path(obj,expr[1:])).next()
+                                expr = next(iter(getattr_path(obj,expr[1:])))
                                 if type(expr) == str :
                                     expr = expr.join( ('"','"'))
                             except:
@@ -1022,9 +1023,9 @@ def build_rdf( gr,obj, oml, includemembers ) :
                             if var :
                                 try:
                                     if var.startswith("^"):
-                                        val = iter(getattr_path(obj,var[1:])).next()
+                                        val = next(iter(getattr_path(obj,var[1:])))
                                     else:
-                                        val = iter(getattr_path(value,var)).next()
+                                        val = next(iter(getattr_path(value,var)))
                                     
                                     if is_resource:
                                         try:
@@ -1047,7 +1048,7 @@ def build_rdf( gr,obj, oml, includemembers ) :
                             _add_vals(gr, value, subject, em.predicate, expr , is_resource)
             except Exception as e:
                 import traceback; import sys; traceback.print_exc()
-                print "Could not evaluate extended mapping %s : %s " % (e,em.attr), sys.exc_info()
+                print("Could not evaluate extended mapping %s : %s " % (e,em.attr), sys.exc_info())
                 raise ValueError("Could not evaluate extended mapping %s : %s " % (e,em.attr))
     # do this after looping through all object mappings!
     return gr if mappingsused > 0 else None
