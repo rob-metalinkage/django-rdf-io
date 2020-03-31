@@ -1,3 +1,5 @@
+from __future__ import print_function
+from builtins import str
 from django.conf import settings
 from django.db.models import signals
 
@@ -20,7 +22,7 @@ def publish_rdf( **kwargs) :
     result = publish( obj, ct.name, oml, None) 
     logger.debug(
             "Persisting RDF for {} of type {} status {} body {}".format(obj,ct,result.status_code,result.content))
-    print            "Persisting RDF for {} of type {} status {} body {}".format(obj,ct,result.status_code,result.content)
+    print("Persisting RDF for {} of type {} status {} body {}".format(obj,ct,result.status_code,result.content))
     
 def setup_signals( **kwargs) :
     objmapping = kwargs['instance']
@@ -39,11 +41,11 @@ def _setup(objmapping) :
         if objmapping.auto_push :
             ct = ContentType.objects.get(id = objmapping.content_type_id).model_class()
             signals.post_save.connect(publish_rdf, sender=ct, dispatch_uid=str(ct.__name__))
-            print "RDF publishing configured for model {}".format((ct))
+            print("RDF publishing configured for model {}".format((ct)))
             logger.info(
                 "RDF publishing configured for model {}".format((ct)))
     except Exception as e:
-        print "Error trying to set up auto-publish for object mapping.. %s " % e
+        print("Error trying to set up auto-publish for object mapping.. %s " % e)
         pass
 
 def clear_signals():
@@ -58,11 +60,11 @@ def _clear(objmapping) :
         if objmapping.auto_push :
             ct = ContentType.objects.get(id = objmapping.content_type_id).model_class()
             signals.post_save.disconnect(publish_rdf, sender=ct, dispatch_uid=str(ct.__name__))
-            print "RDF publishing un-configured for model {}".format((ct))
+            print("RDF publishing un-configured for model {}".format((ct)))
             logger.info(
                 "RDF publishing un-configured for model {}".format((ct)))
     except Exception as e:
-        print "Error trying to clear auto-publish for object mapping.. %s " % e
+        print("Error trying to clear auto-publish for object mapping.. %s " % e)
         pass
         
 def list_pubs():
