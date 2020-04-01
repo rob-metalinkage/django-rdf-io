@@ -860,7 +860,7 @@ class ImportedResource(models.Model):
         super(ImportedResource, self).save(*args,**kwargs)
         # service binding to push original content
         if self.target_repo :
-            push_to_store(self.target_repo, 'ImportedResource', self, self.get_graph())
+            push_to_store(self.target_repo, 'ImportedResource', self, self.get_graph(), mode='PUBLISH')
         oml = ObjectMapping.objects.filter(content_type__model='importedresource')
         if oml :
             publish( self, 'importedresource', oml)
@@ -894,7 +894,7 @@ class ImportedResource(models.Model):
         for res in results:
             return res[0]
     
-def publish(obj, model, oml, rdfstore=None , mode=None):
+def publish(obj, model, oml, rdfstore=None , mode='PUBLISH'):
       
        
     gr = Graph()

@@ -21,7 +21,7 @@ class RDFStoreException(Exception):
     """ RDF store response exception """
     pass
     
-def push_to_store(binding,  model, obj, gr, mode='REVIEW' ):
+def push_to_store(binding,  model, obj, gr, mode='PUBLISH' ):
     from rdf4j import rdf4j_push, rdf4j_get
     from ldp import ldp_push
     """ push an object via its serialisation rules to a store via a ServiceBinding """
@@ -48,7 +48,7 @@ push_to_store.RDFConfigNotFoundException = RDFConfigNotFoundException
 push_to_store.RDFStoreException = RDFStoreException
 
  
-def resolveTemplate(template, model, obj,mode=None) :
+def resolveTemplate(template, model, obj,mode='PUBLISH') :
     from rdf_io.models import getattr_path, ConfigVar
     vals = { 'model' : model }
     #import pdb; pdb.set_trace()
@@ -59,6 +59,7 @@ def resolveTemplate(template, model, obj,mode=None) :
                 if val:
                     vals[param] = val
                 else:
+                    import pdb; pdb.set_trace()
                     raise Exception( "template references unset ConfigVariable %s" % param[1:])
             else:
                 try:
