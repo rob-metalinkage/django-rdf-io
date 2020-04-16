@@ -173,18 +173,18 @@ def publish_set(queryset, model,check=False,mode='PUBLISH'):
     for obj in queryset :
         if check:
             try:
-                yield ("<LI> checking %s " % (obj.uri,))
+                yield ("checking %s " % (obj.uri,))
                 resp = u.urlopen(obj.uri)
                 if resp.getcode() == 200 :
                     continue
             except Exception as e :
-                yield("<UL><LI>%s</LI></UL>" % (str(e), ) )
-        yield ("<LI>publishing %s " % (obj,) )
+                yield("Exception: %s" % (str(e), ) )
+        yield ("publishing %s " % (obj,) )
         try:
             # import pdb; pdb.set_trace()
             publish( obj, model, oml,mode=mode)
             yield ("... Success")
         except Exception as e :
-            yield("<UL><LI>%s</LI></UL>" % (str(e), ) ) 
+            yield("Exception %s" % (str(e), ) ) 
    
     
