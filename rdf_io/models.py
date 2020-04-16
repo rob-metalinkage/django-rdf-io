@@ -1,5 +1,12 @@
-from __future__ import unicode_literals
-from django.utils.encoding import python_2_unicode_compatible
+# from __future__ import unicode_literals
+# from __future__ import print_function
+from builtins import str
+from builtins import next
+from builtins import range
+from builtins import object
+
+#from django.utils.encoding import python_2_unicode_compatible
+
 from django.db import models
 from django.conf import settings
 
@@ -280,7 +287,7 @@ def _get_relobjs(obj,field,filters=None):
     
     # trickier then - need to look at models of the named type
     claz = reltype.model_class()
-    for prop,val in claz.__dict__.items() :
+    for prop,val in list(claz.__dict__.items()) :
         # skip related property names if set   
         if relprop and prop != relprop :
             continue
@@ -330,7 +337,7 @@ def _add_clause(extrafilterclauses, fc, fval , obj, rootobj):
             raise ValueError ("Error in filter clause %s on field %s " % (fc,prop))
     elif fval.startswith(("'", '"', '<')) :
         extrafilterclauses[fc] = dequote(fval)
-    elif not unicode(fval).isnumeric() :
+    elif not str(fval).isnumeric() :
         # look for a value
         extrafilterclauses[fc] = getattr(obj, fval)
     else:
@@ -353,7 +360,7 @@ def as_uri(value):
     try:
         parts = value.split(":")
         if len(parts) == 2 :
-			return value
+            return value
     except:
         pass
     return value.join("<",">")
@@ -516,7 +523,7 @@ class Namespace(models.Model) :
         except:
             return None
       
-    class Meta: 
+    class Meta(object): 
         verbose_name = _(u'namespace')
         verbose_name_plural = _(u'namespaces')
     def __unicode__(self):
@@ -573,12 +580,12 @@ class AttachedMetadata(models.Model):
     metaprop   =  models.ForeignKey(GenericMetaProp,verbose_name='property') 
     value = models.CharField(_(u'value'),max_length=2000)
     def __unicode__(self):
-        return unicode(self.metaprop.__unicode__())   
+        return str(self.metaprop.__unicode__())   
     def getRDFValue(self):
         """ returns value in appropriate datatype """
         return makenode(value)
 
-    class Meta:
+    class Meta(object):
         pass
  #       abstract = True        
         
@@ -843,10 +850,10 @@ class ImportedResource(models.Model):
     # add per user details?
  
     def __unicode__(self):
-        return ( ' '.join( filter(None,(self.resource_type,':', self.file.__unicode__(), self.remote ))))
+        return ( ' '.join( [_f for _f in (self.resource_type,':', self.file.__unicode__(), self.remote ) if _f]))
  
     def __str__(self):
-        return ( ' '.join( filter(None,(self.resource_type,':', self.file.__unicode__(), self.remote ))))
+        return ( ' '.join( [_f for _f in (self.resource_type,':', self.file.__unicode__(), self.remote ) if _f]))
         
 #    def clean(self):
 #        import fields; pdb.set_trace()
@@ -855,7 +862,7 @@ class ImportedResource(models.Model):
         if self.file and os.path.isfile(self.file.path):
             os.remove(self.file.path)
         if self.target_repo :
-            print "TODO - delete remote resource in repo %s" % self.target_repo
+            print("TODO - delete remote resource in repo %s" % self.target_repo)
         super(ImportedResource, self).delete(*args,**kwargs)
     
     def save(self,*args,**kwargs): 
@@ -1026,7 +1033,7 @@ def build_rdf( gr,obj, oml, includemembers ) :
                         elif expr.startswith("/") :
                             #value relativeto root obj  - retrieve and use as literal
                             try:
-                                expr = iter(getattr_path(obj,expr[1:])).next()
+                                expr = next(iter(getattr_path(obj,expr[1:])))
                                 if type(expr) == str :
                                     expr = expr.join( ('"','"'))
                             except:
@@ -1038,9 +1045,9 @@ def build_rdf( gr,obj, oml, includemembers ) :
                             if var :
                                 try:
                                     if var.startswith("^"):
-                                        val = iter(getattr_path(obj,var[1:])).next()
+                                        val = next(iter(getattr_path(obj,var[1:])))
                                     else:
-                                        val = iter(getattr_path(value,var)).next()
+                                        val = next(iter(getattr_path(value,var)))
                                     
                                     if is_resource:
                                         try:
@@ -1063,7 +1070,7 @@ def build_rdf( gr,obj, oml, includemembers ) :
                             _add_vals(gr, value, subject, em.predicate, expr , is_resource)
             except Exception as e:
                 import traceback; import sys; traceback.print_exc()
-                print "Could not evaluate extended mapping %s : %s " % (e,em.attr), sys.exc_info()
+                print("Could not evaluate extended mapping %s : %s " % (e,em.attr), sys.exc_info())
                 raise ValueError("Could not evaluate extended mapping %s : %s " % (e,em.attr))
     # do this after looping through all object mappings!
     return gr if mappingsused > 0 else None
