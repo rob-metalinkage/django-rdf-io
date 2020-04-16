@@ -793,26 +793,40 @@ class ServiceBinding(models.Model):
         else:
             return ServiceBinding.objects.filter(object_mapping__content_type=ct)
 
+    def next_chain(self):
+        obj = self
+        chain = []
+        while obj.next_service :
+            obj = obj.next_service
+            chain.append(obj)
+        return chain
+    
+    def object_mapping_list(self):
+    
+        return ",".join( self.object_mapping.values_list('name',flat=True) )
+        
 class ResourceMeta(AttachedMetadata):
     """
         extensible metadata using rdf_io managed reusable generic metadata properties
     """
     subject       = models.ForeignKey("ImportedResource", related_name="metaprops")  
     
-@python_2_unicode_compatible              
-class ImportedResource(models.Model):
-    TYPE_RULE='RULE'
-    TYPE_MODEL='CLASS'
-    TYPE_INSTANCE='INSTANCE'
-    TYPE_QUERY='QUERY'
-    TYPE_VALIDATION='VALID'
-    TYPE_CHOICES = (
+           
+TYPE_RULE='RULE'
+TYPE_MODEL='CLASS'
+TYPE_INSTANCE='INSTANCE'
+TYPE_QUERY='QUERY'
+TYPE_VALIDATION='VALID'
+TYPE_CHOICES = (
       ( TYPE_RULE, 'Rule (SPIN, SHACL, SKWRL etc)'),
       ( TYPE_MODEL, 'Class model - RDFS or OWL' ),
       ( TYPE_INSTANCE, 'Instance data - SKOS etc' ),
       ( TYPE_QUERY, 'Query template - SPARQL - for future use' ),
       ( TYPE_VALIDATION, 'Validation rule - for future use' ), 
     )
+@python_2_unicode_compatible       
+class ImportedResource(models.Model):
+
     
     savedgraph = None
     
@@ -851,12 +865,14 @@ class ImportedResource(models.Model):
         if not self.description:
             self.description = self.__unicode__()
         super(ImportedResource, self).save(*args,**kwargs)
+        
+    def publish(self,mode='PUBLISH'):
         # service binding to push original content
         if self.target_repo :
             push_to_store(self.target_repo, 'ImportedResource', self, self.get_graph(), mode='PUBLISH')
         oml = ObjectMapping.objects.filter(content_type__model='importedresource')
         if oml :
-            publish( self, 'importedresource', oml)
+            publish( self, 'importedresource', oml,mode)
     
     def get_graph(self):
         # import pdb; pdb.set_trace()

@@ -3,6 +3,10 @@ from django.contrib import admin
 from django.db.models import Q
 from django.contrib.contenttypes.models import ContentType
 
+from django import forms
+#from django.contrib.admin.widgets import SelectWidget
+from django.utils.safestring import mark_safe
+
 class GenericMetaPropInline(admin.TabularInline):
     model = GenericMetaProp
     # readonly_fields = ('slug','created')
@@ -94,7 +98,7 @@ class ImportedResourceAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         qs = super(ImportedResourceAdmin, self).get_queryset(request)
         # import pdb; pdb.set_trace()
-        return qs.filter(Q(subtype__isnull=True) | Q(subtype=IR ))
+        return qs.filter(Q(subtype__isnull=True) | Q(subtype=IR ))      
 
     
 class ObjectBoundListFilter(admin.SimpleListFilter):
@@ -129,11 +133,32 @@ class ChainListFilter(admin.SimpleListFilter):
         except:
             pass
         return qs
+
+class NextChainWidget( forms.Select):
+    def render(self, name, value, attrs=None):
+        self.choices = self.form_instance.fields['next_service'].choices
+        s = super(forms.Select, self).render(name, value, attrs)
+        h="<BR/>"
+        ind= "-> {}<BR/>"
+        
+        for next in  self.form_instance.instance.next_chain():
+            h = h+ ind.format( str(next))
+            ind = "--" + ind
+  
+        
+        return mark_safe(s+ h )
+        
+class ServiceBindingAdminForm (forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super(ServiceBindingAdminForm, self).__init__(*args, **kwargs)
+        self.fields['next_service'].widget = NextChainWidget()
+        self.fields['next_service'].widget.form_instance = self
         
 class ServiceBindingAdmin(admin.ModelAdmin) :
-    list_display = ('title', 'binding_type', 'next_service')
+    list_display = ('title', 'binding_type', 'object_mapping_list')
     list_filter=(ObjectBoundListFilter,ChainListFilter,'binding_type')
-    search_fields = ['title','binding_type']    
+    search_fields = ['title','binding_type'] 
+    form = ServiceBindingAdminForm
     pass
     
 admin.site.register(Namespace, NamespaceAdmin)  
