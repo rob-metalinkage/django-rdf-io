@@ -5,6 +5,9 @@ from builtins import next
 from builtins import range
 from builtins import object
 
+import logging
+logger = logging.getLogger(__name__)
+
 from django.utils.encoding import python_2_unicode_compatible
 
 from django.db import models
@@ -862,7 +865,7 @@ class ImportedResource(models.Model):
         if self.file and os.path.isfile(self.file.path):
             os.remove(self.file.path)
         if self.target_repo :
-            print("TODO - delete remote resource in repo %s" % self.target_repo)
+            logger.info("TODO - delete remote resource in repo %s" % self.target_repo)
         super(ImportedResource, self).delete(*args,**kwargs)
     
     def save(self,*args,**kwargs): 
@@ -873,13 +876,8 @@ class ImportedResource(models.Model):
             self.description = self.__unicode__()
         super(ImportedResource, self).save(*args,**kwargs)
         
-    def publish(self,mode='PUBLISH'):
-        # service binding to push original content
-        if self.target_repo :
-            push_to_store(self.target_repo, 'ImportedResource', self, self.get_graph(), mode='PUBLISH')
-        oml = ObjectMapping.objects.filter(content_type__model='importedresource')
-        if oml :
-            publish( self, 'importedresource', oml,mode)
+    def get_publish_service(self):
+        return [ self.target_repo ]
     
     def get_graph(self):
         # import pdb; pdb.set_trace()
@@ -911,10 +909,14 @@ class ImportedResource(models.Model):
             return res[0]
     
 def publish(obj, model, oml, rdfstore=None , mode='PUBLISH'):
-      
+    """ build RDF graph and execute any postprocessing service chains
+
+    Post processing may be tied to the object type - via Service Binding - or may be directly supported by the object type itself.
+    Object specific services are executed in advance of general object type bindings - this allows for example uploaded resources to be installed before executing an inferencing chain.
+    """
        
     gr = Graph()
-    #import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
 #    ns_mgr = NamespaceManager(Graph())
 #    gr.namespace_manager = ns_mgr
     try:
@@ -922,16 +924,25 @@ def publish(obj, model, oml, rdfstore=None , mode='PUBLISH'):
         if not gr:
             return []
     except Exception as e:
-        print(sys.exc_info()[0])
+        logger.exception(sys.exc_info()[0])
         raise Exception("Error during serialisation: " + str(e) )
    
 #    curl -X POST -H "Content-Type: text/turtle" -d @- http://192.168.56.151:8080/marmotta/import/upload?context=http://mapstory.org/def/featuretypes/gazetteer 
     
     inference_chain_results = []
-    for next_binding in ServiceBinding.get_service_bindings(model,None) :
+    try:
+        obj_chain = obj.get_publish_service()
+        inference_chain_results = inference_chain_results + execute_service_chain(model,obj,mode, obj.get_graph() , obj_chain )
+    except:
+        pass
+    inference_chain_results = inference_chain_results + execute_service_chain(model,obj,mode, gr, ServiceBinding.get_service_bindings(model,None) )
+    
+def execute_service_chain(model,obj, mode, gr, chain):
+    inference_chain_results = []
+    for next_binding in chain :
         newgr = gr  # start off with original RDF graph for each new chain
         while next_binding :
-            print ( next_binding.__unicode__() )
+            logger.info ( next_binding.__unicode__() )
             if next_binding.binding_type == ServiceBinding.INFERENCE :
                 newgr = inference(model, obj, next_binding, newgr, mode)
             elif next_binding.binding_type in ( ServiceBinding.PERSIST_UPDATE, ServiceBinding.PERSIST_REPLACE, ServiceBinding.PERSIST_CREATE ) :
@@ -1003,7 +1014,7 @@ def build_rdf( gr,obj, oml, includemembers ) :
                     try:
                         build_rdf( gr,val, (cm.chainedMapping,), includemembers )
                     except:
-                        print( "Error serialising object %s as %s " % ( val, cm.attr ))
+                        logger.error( "Error serialising object %s as %s " % ( val, cm.attr ))
         
         for em in EmbeddedMapping.objects.filter(scope=om) :
             try:
@@ -1069,8 +1080,8 @@ def build_rdf( gr,obj, oml, includemembers ) :
                             # add to parent
                             _add_vals(gr, value, subject, em.predicate, expr , is_resource)
             except Exception as e:
-                import traceback; import sys; traceback.print_exc()
-                print("Could not evaluate extended mapping %s : %s " % (e,em.attr), sys.exc_info())
+                #import traceback; import sys; traceback.print_exc()
+                logger.error("Could not evaluate extended mapping %s : %s " % (e,em.attr), sys.exc_info())
                 raise ValueError("Could not evaluate extended mapping %s : %s " % (e,em.attr))
     # do this after looping through all object mappings!
     return gr if mappingsused > 0 else None

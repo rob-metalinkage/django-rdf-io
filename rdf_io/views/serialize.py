@@ -141,7 +141,7 @@ def pub_rdf(request,model,id):
 def get_rdfstore(model, name=None ):
     # now get the remote store mappings 
     # deprecated - using ConfigVar and ServiceBindings now..
-    print "Warning - deprecated method invoked - use ServiceBindings instead of static config now"
+    # print "Warning - deprecated method invoked - use ServiceBindings instead of static config now"
     return None
     # if name :
         # rdfstore_cfg = settings.RDFSTORES[name]

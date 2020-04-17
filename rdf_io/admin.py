@@ -2,7 +2,7 @@ from .models import *
 from django.contrib import admin
 from django.db.models import Q
 from django.contrib.contenttypes.models import ContentType
-
+from .views import *
 from django import forms
 #from django.contrib.admin.widgets import SelectWidget
 from django.utils.safestring import mark_safe
@@ -14,6 +14,44 @@ class GenericMetaPropInline(admin.TabularInline):
     # related_search_fields = {'label' : ('name','slug')}
     extra=1 
     
+
+def publish_set_background(queryset,model,check,mode,logf):
+    from django.core.files import File
+    # import pdb; pdb.set_trace()
+    import time
+    
+    with open(logf,'w') as f:
+        proclog = File(f) 
+        f.write("Publishing %s %ss in mode %s at %s<BR>" % ( str(len(queryset)), model, mode, time.asctime()))
+        for msg in publish_set(queryset,model,check,mode):
+            if( msg.startswith("Exception") ):
+                em = "<strong>"
+                emend = "</strong>"
+            else:
+                em = ""
+                emend = ""
+            f.write("".join(("<LI>",em,msg,emend,"</LI>")))
+            f.flush()
+        f.write ("<BR> publish action finished at %s<BR>" % (  time.asctime(),))
+    
+    
+def publish_set_action(queryset,model,check=False,mode='PUBLISH'):
+    import threading
+    from django.conf import settings
+    import os
+    import time
+    timestr = time.strftime("%Y%m%d-%H%M%S")
+    logfname = '{}_batch_publish_{}.html'.format(model,timestr)
+    try:
+        logf = os.path.join(settings.BATCH_RDFPUB_LOG, logfname)
+    except:
+        logf = os.path.join(settings.STATIC_ROOT,logfname)
+    t = threading.Thread(target=publish_set_background, args=(queryset,model,check,mode,logf), kwargs={})
+    t.setDaemon(True)
+    t.start()
+    return "/static/" + logfname
+
+
  
 def force_prefix_use(modeladmin, request, queryset):
     """ update selected Metaprops to use CURIE form with registered prefix """
