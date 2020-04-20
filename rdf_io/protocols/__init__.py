@@ -1,3 +1,3 @@
-from api import *
-from ..protocols import rdf4j
-from ..protocols import ldp
+from ..protocols.api import *
+from ..protocols import api,rdf4j,ldp
+
