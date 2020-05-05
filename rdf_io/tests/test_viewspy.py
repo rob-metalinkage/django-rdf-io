@@ -13,6 +13,7 @@ class RequestTestCase(SerialisationSetupTestCase):
     def setUp(self):
         super(RequestTestCase,self).setUp()
         self.factory = RequestFactory()
+        request = self.factory.get('/rdf_io/ctl_signals/off')
 
         
     def test_ttl_serialise(self):

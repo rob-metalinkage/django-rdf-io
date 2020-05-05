@@ -1,5 +1,5 @@
 # # -*- coding:utf-8 -*-
-from django.shortcuts import render_to_response, redirect
+from django.shortcuts import redirect
 from rdf_io.models import *
 from ..protocols import push_to_store,inference,rdf_delete
 
