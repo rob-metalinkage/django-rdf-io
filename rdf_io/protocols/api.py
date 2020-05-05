@@ -59,7 +59,7 @@ def resolveTemplate(template, model, obj,mode='PUBLISH') :
                 if val:
                     vals[param] = val
                 else:
-                    import pdb; pdb.set_trace()
+                    #import pdb; pdb.set_trace()
                     raise Exception( "template references unset ConfigVariable %s" % param[1:])
             else:
                 try:

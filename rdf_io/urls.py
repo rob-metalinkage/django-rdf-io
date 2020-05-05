@@ -1,5 +1,9 @@
 from django.conf.urls import url
-from .views import *
+try:
+    from .views import ctl_signals,show_config,sync_remote,to_rdfbyid,pub_rdf, to_rdfbykey
+except:
+    from views import ctl_signals,show_config,sync_remote,to_rdfbyid,pub_rdf, to_rdfbykey
+    
 from django.contrib import admin
 admin.autodiscover()
 

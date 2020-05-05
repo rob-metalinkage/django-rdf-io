@@ -1,7 +1,7 @@
 # # -*- coding:utf-8 -*-
 from django.shortcuts import render_to_response, redirect
 from rdf_io.models import *
-from rdf_io.protocols import push_to_store,inference,rdf_delete
+from ..protocols import push_to_store,inference,rdf_delete
 
 from django.template import RequestContext
 from django.contrib.contenttypes.models import ContentType
@@ -141,7 +141,7 @@ def pub_rdf(request,model,id):
 def get_rdfstore(model, name=None ):
     # now get the remote store mappings 
     # deprecated - using ConfigVar and ServiceBindings now..
-    print "Warning - deprecated method invoked - use ServiceBindings instead of static config now"
+    # print "Warning - deprecated method invoked - use ServiceBindings instead of static config now"
     return None
     # if name :
         # rdfstore_cfg = settings.RDFSTORES[name]
@@ -173,18 +173,18 @@ def publish_set(queryset, model,check=False,mode='PUBLISH'):
     for obj in queryset :
         if check:
             try:
-                yield ("<LI> checking %s " % (obj.uri,))
+                yield ("checking %s " % (obj.uri,))
                 resp = u.urlopen(obj.uri)
                 if resp.getcode() == 200 :
                     continue
             except Exception as e :
-                yield("<UL><LI>%s</LI></UL>" % (str(e), ) )
-        yield ("<LI>publishing %s " % (obj,) )
+                yield("Exception: %s" % (str(e), ) )
+        yield ("publishing %s " % (obj,) )
         try:
             # import pdb; pdb.set_trace()
             publish( obj, model, oml,mode=mode)
             yield ("... Success")
         except Exception as e :
-            yield("<UL><LI>%s</LI></UL>" % (str(e), ) ) 
+            yield("Exception %s" % (str(e), ) ) 
    
     
