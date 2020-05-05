@@ -1,5 +1,15 @@
-from __future__ import unicode_literals
+# from __future__ import unicode_literals
+# from __future__ import print_function
+from builtins import str
+from builtins import next
+from builtins import range
+from builtins import object
+
+import logging
+logger = logging.getLogger(__name__)
+
 from django.utils.encoding import python_2_unicode_compatible
+
 from django.db import models
 from django.conf import settings
 
@@ -280,7 +290,7 @@ def _get_relobjs(obj,field,filters=None):
     
     # trickier then - need to look at models of the named type
     claz = reltype.model_class()
-    for prop,val in claz.__dict__.items() :
+    for prop,val in list(claz.__dict__.items()) :
         # skip related property names if set   
         if relprop and prop != relprop :
             continue
@@ -330,7 +340,7 @@ def _add_clause(extrafilterclauses, fc, fval , obj, rootobj):
             raise ValueError ("Error in filter clause %s on field %s " % (fc,prop))
     elif fval.startswith(("'", '"', '<')) :
         extrafilterclauses[fc] = dequote(fval)
-    elif not unicode(fval).isnumeric() :
+    elif not str(fval).isnumeric() :
         # look for a value
         extrafilterclauses[fc] = getattr(obj, fval)
     else:
@@ -353,7 +363,7 @@ def as_uri(value):
     try:
         parts = value.split(":")
         if len(parts) == 2 :
-			return value
+            return value
     except:
         pass
     return value.join("<",">")
@@ -516,7 +526,7 @@ class Namespace(models.Model) :
         except:
             return None
       
-    class Meta: 
+    class Meta(object): 
         verbose_name = _(u'namespace')
         verbose_name_plural = _(u'namespaces')
     def __unicode__(self):
@@ -573,12 +583,12 @@ class AttachedMetadata(models.Model):
     metaprop   =  models.ForeignKey(GenericMetaProp,verbose_name='property') 
     value = models.CharField(_(u'value'),max_length=2000)
     def __unicode__(self):
-        return unicode(self.metaprop.__unicode__())   
+        return str(self.metaprop.__unicode__())   
     def getRDFValue(self):
         """ returns value in appropriate datatype """
         return makenode(value)
 
-    class Meta:
+    class Meta(object):
         pass
  #       abstract = True        
         
@@ -793,26 +803,40 @@ class ServiceBinding(models.Model):
         else:
             return ServiceBinding.objects.filter(object_mapping__content_type=ct)
 
+    def next_chain(self):
+        obj = self
+        chain = []
+        while obj.next_service :
+            obj = obj.next_service
+            chain.append(obj)
+        return chain
+    
+    def object_mapping_list(self):
+    
+        return ",".join( self.object_mapping.values_list('name',flat=True) )
+        
 class ResourceMeta(AttachedMetadata):
     """
         extensible metadata using rdf_io managed reusable generic metadata properties
     """
     subject       = models.ForeignKey("ImportedResource", related_name="metaprops")  
     
-@python_2_unicode_compatible              
-class ImportedResource(models.Model):
-    TYPE_RULE='RULE'
-    TYPE_MODEL='CLASS'
-    TYPE_INSTANCE='INSTANCE'
-    TYPE_QUERY='QUERY'
-    TYPE_VALIDATION='VALID'
-    TYPE_CHOICES = (
+           
+TYPE_RULE='RULE'
+TYPE_MODEL='CLASS'
+TYPE_INSTANCE='INSTANCE'
+TYPE_QUERY='QUERY'
+TYPE_VALIDATION='VALID'
+TYPE_CHOICES = (
       ( TYPE_RULE, 'Rule (SPIN, SHACL, SKWRL etc)'),
       ( TYPE_MODEL, 'Class model - RDFS or OWL' ),
       ( TYPE_INSTANCE, 'Instance data - SKOS etc' ),
       ( TYPE_QUERY, 'Query template - SPARQL - for future use' ),
       ( TYPE_VALIDATION, 'Validation rule - for future use' ), 
     )
+@python_2_unicode_compatible       
+class ImportedResource(models.Model):
+
     
     savedgraph = None
     
@@ -829,10 +853,10 @@ class ImportedResource(models.Model):
     # add per user details?
  
     def __unicode__(self):
-        return ( ' '.join( filter(None,(self.resource_type,':', self.file.__unicode__(), self.remote ))))
+        return ( ' '.join( [_f for _f in (self.resource_type,':', self.file.__unicode__(), self.remote ) if _f]))
  
     def __str__(self):
-        return ( ' '.join( filter(None,(self.resource_type,':', self.file.__unicode__(), self.remote ))))
+        return ( ' '.join( [_f for _f in (self.resource_type,':', self.file.__unicode__(), self.remote ) if _f]))
         
 #    def clean(self):
 #        import fields; pdb.set_trace()
@@ -841,7 +865,7 @@ class ImportedResource(models.Model):
         if self.file and os.path.isfile(self.file.path):
             os.remove(self.file.path)
         if self.target_repo :
-            print "TODO - delete remote resource in repo %s" % self.target_repo
+            logger.info("TODO - delete remote resource in repo %s" % self.target_repo)
         super(ImportedResource, self).delete(*args,**kwargs)
     
     def save(self,*args,**kwargs): 
@@ -851,12 +875,9 @@ class ImportedResource(models.Model):
         if not self.description:
             self.description = self.__unicode__()
         super(ImportedResource, self).save(*args,**kwargs)
-        # service binding to push original content
-        if self.target_repo :
-            push_to_store(self.target_repo, 'ImportedResource', self, self.get_graph(), mode='PUBLISH')
-        oml = ObjectMapping.objects.filter(content_type__model='importedresource')
-        if oml :
-            publish( self, 'importedresource', oml)
+        
+    def get_publish_service(self):
+        return [ self.target_repo ]
     
     def get_graph(self):
         # import pdb; pdb.set_trace()
@@ -888,10 +909,14 @@ class ImportedResource(models.Model):
             return res[0]
     
 def publish(obj, model, oml, rdfstore=None , mode='PUBLISH'):
-      
+    """ build RDF graph and execute any postprocessing service chains
+
+    Post processing may be tied to the object type - via Service Binding - or may be directly supported by the object type itself.
+    Object specific services are executed in advance of general object type bindings - this allows for example uploaded resources to be installed before executing an inferencing chain.
+    """
        
     gr = Graph()
-    #import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
 #    ns_mgr = NamespaceManager(Graph())
 #    gr.namespace_manager = ns_mgr
     try:
@@ -899,16 +924,25 @@ def publish(obj, model, oml, rdfstore=None , mode='PUBLISH'):
         if not gr:
             return []
     except Exception as e:
-        print(sys.exc_info()[0])
+        logger.exception(sys.exc_info()[0])
         raise Exception("Error during serialisation: " + str(e) )
    
 #    curl -X POST -H "Content-Type: text/turtle" -d @- http://192.168.56.151:8080/marmotta/import/upload?context=http://mapstory.org/def/featuretypes/gazetteer 
     
     inference_chain_results = []
-    for next_binding in ServiceBinding.get_service_bindings(model,None) :
+    try:
+        obj_chain = obj.get_publish_service()
+        inference_chain_results = inference_chain_results + execute_service_chain(model,obj,mode, obj.get_graph() , obj_chain )
+    except:
+        pass
+    inference_chain_results = inference_chain_results + execute_service_chain(model,obj,mode, gr, ServiceBinding.get_service_bindings(model,None) )
+    
+def execute_service_chain(model,obj, mode, gr, chain):
+    inference_chain_results = []
+    for next_binding in chain :
         newgr = gr  # start off with original RDF graph for each new chain
         while next_binding :
-            print ( next_binding.__unicode__() )
+            logger.info ( next_binding.__unicode__() )
             if next_binding.binding_type == ServiceBinding.INFERENCE :
                 newgr = inference(model, obj, next_binding, newgr, mode)
             elif next_binding.binding_type in ( ServiceBinding.PERSIST_UPDATE, ServiceBinding.PERSIST_REPLACE, ServiceBinding.PERSIST_CREATE ) :
@@ -980,7 +1014,7 @@ def build_rdf( gr,obj, oml, includemembers ) :
                     try:
                         build_rdf( gr,val, (cm.chainedMapping,), includemembers )
                     except:
-                        print( "Error serialising object %s as %s " % ( val, cm.attr ))
+                        logger.error( "Error serialising object %s as %s " % ( val, cm.attr ))
         
         for em in EmbeddedMapping.objects.filter(scope=om) :
             try:
@@ -1010,7 +1044,7 @@ def build_rdf( gr,obj, oml, includemembers ) :
                         elif expr.startswith("/") :
                             #value relativeto root obj  - retrieve and use as literal
                             try:
-                                expr = iter(getattr_path(obj,expr[1:])).next()
+                                expr = next(iter(getattr_path(obj,expr[1:])))
                                 if type(expr) == str :
                                     expr = expr.join( ('"','"'))
                             except:
@@ -1022,9 +1056,9 @@ def build_rdf( gr,obj, oml, includemembers ) :
                             if var :
                                 try:
                                     if var.startswith("^"):
-                                        val = iter(getattr_path(obj,var[1:])).next()
+                                        val = next(iter(getattr_path(obj,var[1:])))
                                     else:
-                                        val = iter(getattr_path(value,var)).next()
+                                        val = next(iter(getattr_path(value,var)))
                                     
                                     if is_resource:
                                         try:
@@ -1046,8 +1080,8 @@ def build_rdf( gr,obj, oml, includemembers ) :
                             # add to parent
                             _add_vals(gr, value, subject, em.predicate, expr , is_resource)
             except Exception as e:
-                import traceback; import sys; traceback.print_exc()
-                print "Could not evaluate extended mapping %s : %s " % (e,em.attr), sys.exc_info()
+                #import traceback; import sys; traceback.print_exc()
+                logger.error("Could not evaluate extended mapping %s : %s " % (e,em.attr), sys.exc_info())
                 raise ValueError("Could not evaluate extended mapping %s : %s " % (e,em.attr))
     # do this after looping through all object mappings!
     return gr if mappingsused > 0 else None

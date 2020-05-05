@@ -2,6 +2,10 @@ from .models import *
 from django.contrib import admin
 from django.db.models import Q
 from django.contrib.contenttypes.models import ContentType
+from .views import *
+from django import forms
+#from django.contrib.admin.widgets import SelectWidget
+from django.utils.safestring import mark_safe
 
 class GenericMetaPropInline(admin.TabularInline):
     model = GenericMetaProp
@@ -10,6 +14,44 @@ class GenericMetaPropInline(admin.TabularInline):
     # related_search_fields = {'label' : ('name','slug')}
     extra=1 
     
+
+def publish_set_background(queryset,model,check,mode,logf):
+    from django.core.files import File
+    # import pdb; pdb.set_trace()
+    import time
+    
+    with open(logf,'w') as f:
+        proclog = File(f) 
+        f.write("Publishing %s %ss in mode %s at %s<BR>" % ( str(len(queryset)), model, mode, time.asctime()))
+        for msg in publish_set(queryset,model,check,mode):
+            if( msg.startswith("Exception") ):
+                em = "<strong>"
+                emend = "</strong>"
+            else:
+                em = ""
+                emend = ""
+            f.write("".join(("<LI>",em,msg,emend,"</LI>")))
+            f.flush()
+        f.write ("<BR> publish action finished at %s<BR>" % (  time.asctime(),))
+    
+    
+def publish_set_action(queryset,model,check=False,mode='PUBLISH'):
+    import threading
+    from django.conf import settings
+    import os
+    import time
+    timestr = time.strftime("%Y%m%d-%H%M%S")
+    logfname = '{}_batch_publish_{}.html'.format(model,timestr)
+    try:
+        logf = os.path.join(settings.BATCH_RDFPUB_LOG, logfname)
+    except:
+        logf = os.path.join(settings.STATIC_ROOT,logfname)
+    t = threading.Thread(target=publish_set_background, args=(queryset,model,check,mode,logf), kwargs={})
+    t.setDaemon(True)
+    t.start()
+    return "/static/" + logfname
+
+
  
 def force_prefix_use(modeladmin, request, queryset):
     """ update selected Metaprops to use CURIE form with registered prefix """
@@ -94,7 +136,7 @@ class ImportedResourceAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         qs = super(ImportedResourceAdmin, self).get_queryset(request)
         # import pdb; pdb.set_trace()
-        return qs.filter(Q(subtype__isnull=True) | Q(subtype=IR ))
+        return qs.filter(Q(subtype__isnull=True) | Q(subtype=IR ))      
 
     
 class ObjectBoundListFilter(admin.SimpleListFilter):
@@ -129,11 +171,32 @@ class ChainListFilter(admin.SimpleListFilter):
         except:
             pass
         return qs
+
+class NextChainWidget( forms.Select):
+    def render(self, name, value, attrs=None):
+        self.choices = self.form_instance.fields['next_service'].choices
+        s = super(forms.Select, self).render(name, value, attrs)
+        h="<BR/>"
+        ind= "-> {}<BR/>"
+        
+        for next in  self.form_instance.instance.next_chain():
+            h = h+ ind.format( str(next))
+            ind = "--" + ind
+  
+        
+        return mark_safe(s+ h )
+        
+class ServiceBindingAdminForm (forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super(ServiceBindingAdminForm, self).__init__(*args, **kwargs)
+        self.fields['next_service'].widget = NextChainWidget()
+        self.fields['next_service'].widget.form_instance = self
         
 class ServiceBindingAdmin(admin.ModelAdmin) :
-    list_display = ('title', 'binding_type', 'next_service')
+    list_display = ('title', 'binding_type', 'object_mapping_list')
     list_filter=(ObjectBoundListFilter,ChainListFilter,'binding_type')
-    search_fields = ['title','binding_type']    
+    search_fields = ['title','binding_type'] 
+    form = ServiceBindingAdminForm
     pass
     
 admin.site.register(Namespace, NamespaceAdmin)  

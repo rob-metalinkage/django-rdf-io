@@ -1,6 +1,8 @@
 # Geonode installation notes
 (may apply to other bundled django applications, where mod_wsgi is used to connect to django)
 
+# note this is out of date - should be revisited now Geonode has migrated to django 2.2
+
 # Use Case
 an existing django application has been installed on unbuntu using apt-get
 

@@ -1,6 +1,6 @@
 
 import requests
-from api import RDFStoreException, resolveTemplate
+from .api import RDFStoreException, resolveTemplate
 
        
 def rdf4j_push(rdfstore, model, obj, gr, bindingtype, mode ):
