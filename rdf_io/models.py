@@ -8,7 +8,10 @@ from builtins import object
 import logging
 logger = logging.getLogger(__name__)
 
-from django.utils.encoding import python_2_unicode_compatible
+try:
+    from django.utils.encoding import python_2_unicode_compatible
+except:
+    from six import python_2_unicode_compatible
 
 from django.db import models
 from django.conf import settings
@@ -36,6 +39,9 @@ from rdflib.namespace import NamespaceManager,RDF
 from rdf_io.protocols import *
 from django.db.models import Q
 
+def testxx():
+    print( __name__)
+    
 # helpers
 def getattr_path(obj,path) :
     """ Get a list of attribute values matching a nested attribute path with filters 
@@ -547,7 +553,7 @@ class GenericMetaProp(models.Model) :
         Works with the namespace object to allow short forms of metadata to be displayed
     """
     objects = GenericMetaPropManager()
-    namespace = models.ForeignKey(Namespace,blank=True, null=True, verbose_name=_(u'namespace'))
+    namespace = models.ForeignKey(Namespace,models.PROTECT,blank=True, null=True, verbose_name=_(u'namespace'))
     propname =  models.CharField(_(u'name'),blank=True,max_length=250,editable=True)
     uri = CURIE_Field(blank=True, unique=True)
     definition  = models.TextField(_(u'definition'), blank=True)
@@ -580,7 +586,7 @@ class AttachedMetadata(models.Model):
     
         extensible metadata using rdf_io managed reusable generic metadata properties
     """
-    metaprop   =  models.ForeignKey(GenericMetaProp,verbose_name='property') 
+    metaprop   =  models.ForeignKey(GenericMetaProp, models.PROTECT,verbose_name='property') 
     value = models.CharField(_(u'value'),max_length=2000)
     def __unicode__(self):
         return str(self.metaprop.__unicode__())   
@@ -664,7 +670,7 @@ class AttributeMapping(models.Model):
     """
         records a mapping from an object mapping that defines a relation from the object to a value using a predicate
     """
-    scope = models.ForeignKey(ObjectMapping)
+    scope = models.ForeignKey(ObjectMapping,models.PROTECT)
     attr = EXPR_Field(_(u'source attribute'),help_text=_(u'literal value or path (attribute[filter].)* with optional @element or ^^element eg locationname[language=].name@language.  filter values are empty (=not None), None, or a string value'),blank=False,editable=True)
     # filter = FILTER_Field(_(u'Filter'), null=True, blank=True,editable=True)
     predicate = CURIE_Field(_(u'predicate'),blank=False,editable=True,help_text=_(u'URI or CURIE. Use :prop.prop.prop form to select a property of the mapped object to use as the predicate'))
@@ -678,7 +684,7 @@ class EmbeddedMapping(models.Model):
     
         records a mapping for a complex data structure
     """
-    scope = models.ForeignKey(ObjectMapping)
+    scope = models.ForeignKey(ObjectMapping,models.PROTECT,)
     attr = EXPR_Field(_(u'source attribute'),help_text=_(u'attribute - if empty nothing generated, if multivalued will be iterated over'))
     predicate = CURIE_Field(_(u'predicate'),blank=False,editable=True, help_text=_(u'URI or CURIE. Use :prop.prop.prop form to select a property of the mapped object to use asthe predicate'))
     struct = models.TextField(_(u'object structure'),max_length=2000, help_text=_(u' ";" separated list of <em>predicate</em> <em>attribute expr</em>  where attribute expr a model field or "literal" or <uri> - in future may be an embedded struct inside {} '),blank=False,editable=True)
@@ -692,10 +698,10 @@ class ChainedMapping(models.Model):
     
         Chains to a specific mapping to nest the resulting graph within the current serialisation
     """
-    scope = models.ForeignKey(ObjectMapping,editable=False, )
+    scope = models.ForeignKey(ObjectMapping,models.PROTECT,editable=False, )
     attr = EXPR_Field(_(u'source attribute'),help_text=_(u'attribute - if empty nothing generated, if multivalued will be iterated over'))
     predicate = CURIE_Field(_(u'predicate'),blank=False,editable=True, help_text=_(u'URI or CURIE. Use :prop.prop.prop form to select a property of the mapped object to use asthe predicate'))
-    chainedMapping = models.ForeignKey(ObjectMapping, blank=False,editable=True, related_name='chained',help_text=_(u'Mapping to nest, for each value of attribute. may be recursive'))
+    chainedMapping = models.ForeignKey(ObjectMapping, models.PROTECT,blank=False,editable=True, related_name='chained',help_text=_(u'Mapping to nest, for each value of attribute. may be recursive'))
     
     def __unicode__(self):
         return ( ' '.join(('chained mapping:',self.attr, self.predicate, self.chainedMapping.name )))
@@ -788,9 +794,9 @@ class ServiceBinding(models.Model):
     # use_as_default = models.BooleanField(verbose_name='Use by default', help_text='Set this flag to use this by default')
 
     object_filter=models.TextField(max_length=2000, verbose_name='filter expression', help_text='A (python dict) filter on the objects that this binding applies to', blank=True, null=True)
-    next_service=models.ForeignKey('ServiceBinding', verbose_name='Next service', blank=True, null=True)
-    on_delete_service=models.ForeignKey('ServiceBinding', related_name='on_delete',verbose_name='Deletion service', blank=True, null=True, help_text='This will be invoked on object deletion if specified, and also if the binding is "replace" - which allows for a specific pre-deletion step if not supported by the repository API natively')
-    on_fail_service=models.ForeignKey('ServiceBinding', related_name='on_fail',verbose_name='On fail service', blank=True, null=True, help_text='Overrides default failure reporting')
+    next_service=models.ForeignKey('ServiceBinding', models.PROTECT, verbose_name='Next service', blank=True, null=True)
+    on_delete_service=models.ForeignKey('ServiceBinding', models.PROTECT, related_name='on_delete',verbose_name='Deletion service', blank=True, null=True, help_text='This will be invoked on object deletion if specified, and also if the binding is "replace" - which allows for a specific pre-deletion step if not supported by the repository API natively')
+    on_fail_service=models.ForeignKey('ServiceBinding', models.PROTECT, related_name='on_fail',verbose_name='On fail service', blank=True, null=True, help_text='Overrides default failure reporting')
 
     def __unicode__(self):
         return self.title + "(" + self.service_api + " : " + self.service_url + ")"
@@ -819,7 +825,7 @@ class ResourceMeta(AttachedMetadata):
     """
         extensible metadata using rdf_io managed reusable generic metadata properties
     """
-    subject       = models.ForeignKey("ImportedResource", related_name="metaprops")  
+    subject       = models.ForeignKey("ImportedResource", models.PROTECT,related_name="metaprops")  
     
            
 TYPE_RULE='RULE'
@@ -840,11 +846,11 @@ class ImportedResource(models.Model):
     
     savedgraph = None
     
-    subtype = models.ForeignKey(ContentType,editable=False,null=True,verbose_name='Specific Type')
+    subtype = models.ForeignKey(ContentType,models.PROTECT,editable=False,null=True,verbose_name='Specific Type')
     
     resource_type=models.CharField(choices=TYPE_CHOICES,default=TYPE_INSTANCE,max_length=10,
     help_text='Determines the post processing applied to the uploaded file')   
-    target_repo=models.ForeignKey(ServiceBinding, verbose_name='Data disposition',help_text='This is a service binding for the data object, in addition to any service bindings applied to the Imported Resource metadata.' , null=True, blank=True)
+    target_repo=models.ForeignKey(ServiceBinding, models.PROTECT, verbose_name='Data disposition',help_text='This is a service binding for the data object, in addition to any service bindings applied to the Imported Resource metadata.' , null=True, blank=True)
     description = models.CharField(verbose_name='ImportedResource Name',max_length=255, blank=True)
     file = models.FileField(upload_to='resources/',blank=True)
     remote = models.URLField(max_length=2000,blank=True,verbose_name='Remote RDF source URI') 

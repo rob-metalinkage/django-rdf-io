@@ -1,5 +1,5 @@
 # # -*- coding:utf-8 -*-
-from django.shortcuts import render_to_response, redirect
+#from django.shortcuts import render_to_response, redirect
 from rdf_io.models import ObjectMapping,Namespace,AttributeMapping,EmbeddedMapping, ObjectType, getattr_path, apply_pathfilter, expand_curie, dequote
 from rdf_io.views import get_rdfstore,publish
 from django.template import RequestContext
