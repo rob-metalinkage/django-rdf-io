@@ -388,8 +388,8 @@ def as_resource(gr,curie) :
     try :
         nsuri = Namespace.getNamespace(ns)
         if nsuri :
-            gr.namespace_manager.bind( str(ns), namespace.Namespace(nsuri), override=False)
-            return URIRef("".join((str(nsuri),value)))
+            gr.namespace_manager.bind( str(ns), namespace.Namespace(nsuri.uri), override=False)
+            return URIRef("".join((nsuri.uri,value)))
         else :
             return URIRef(cleaned) 
     except:
