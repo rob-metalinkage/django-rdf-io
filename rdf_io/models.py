@@ -880,6 +880,7 @@ class ImportedResource(models.Model):
             self.subtype = ContentType.objects.get_for_model(self.__class__)
         if not self.description:
             self.description = self.__unicode__()
+        self.savedgraph = None
         super(ImportedResource, self).save(*args,**kwargs)
         
     def get_publish_service(self):
