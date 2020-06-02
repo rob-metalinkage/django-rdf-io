@@ -947,7 +947,7 @@ def execute_service_chain(model,obj, mode, gr, chain):
     for next_binding in chain :
         newgr = gr  # start off with original RDF graph for each new chain
         while next_binding :
-            logger.info ( " -- ".join( (mode, obj.graph, next_binding.__unicode__() ) ) )
+            logger.info ( " -- ".join( (mode, str(obj), next_binding.__unicode__() ) ) )
             if next_binding.binding_type == ServiceBinding.INFERENCE :
                 newgr = inference(model, obj, next_binding, newgr, mode)
             elif next_binding.binding_type in ( ServiceBinding.PERSIST_UPDATE, ServiceBinding.PERSIST_REPLACE, ServiceBinding.PERSIST_CREATE ) :
