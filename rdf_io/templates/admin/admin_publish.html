@@ -1,0 +1,91 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<style>
+/* Style the button that is used to open and close the collapsible content */
+.collapsible {
+  background-color: #eee;
+  color: #444;
+  cursor: pointer;
+  padding: 18px;
+  // width: 100%;
+  border: none;
+  text-align: left;
+  outline: none;
+  font-size: 15px;
+}
+
+/* Add a background color to the button if it is clicked on (add the .active class with JS), and when you move the mouse over it (hover) */
+.active, .collapsible:hover {
+  background-color: #ccc;
+}
+
+/* Style the collapsible content. Note: hidden by default */
+.content {
+  padding: 0 18px;
+  max-height: 0;
+  width: 50% ;
+  overflow: hidden;
+  background-color: #f1f1f1;
+}
+</style>
+
+<form action="" method="post">
+  {% csrf_token %}
+  
+  {% for scheme in schemes %}
+    <input type="hidden" name="_selected_action" value="{{ scheme.pk }}" />
+  {% endfor %}
+  
+<p>
+
+</p><P>Publishing in REVIEW or PUBLISH mode uses alternative Config Variables values if scoped to these modes. Publishing executes the configured ServiceBinding chains for these objects with the selected set of config variables.</P>
+<P>Show config vars <button id="pubvars" type="button" class="collapsible">Publish mode</button> <button id="reviewvars" type="button" class="collapsible">Review mode</button>
+<div id="pubvars_content" class="content">
+<TABLE><TABLE><TR><TD COLSPAN="2"><B>PUBLISH</B></TD></TR><TR>  {% for var in pubvars %}
+    <TR><TD>{{ var.var }}</TD><TD>{{ var.value }}</TD></TR>
+  {% endfor %}
+  </TABLE>
+</div>
+<div id="reviewvars_content" class="content">
+    <TABLE><TR><TD COLSPAN="2"><B>REVIEW</B></TD></TR><TR> {% for var in reviewvars %}
+    <TD>{{ var.var }}</TD><TD>{{ var.value }}</TD></TR>
+   {% endfor %}
+   </TABLE>
+</div>
+<H1>Choose publishing options</H1>
+<div style="float:left; width: 50%">
+<input type="radio" id="publish" name="mode" value="PUBLISH"/>
+<label for="publish">Publish to production repository</label><br>
+<input type="radio" id="review" name="mode" value="REVIEW"/>
+<label for="review">Publish to staging repository</label><br>
+<input type="radio" id="cancel" name="mode" value="CANCEL" default="on"/>
+<label for="cancel">CANCEL</label>
+</div>
+<div style="float:left; width: 50%">
+<input type="checkbox" id="checkuri" name="checkuri" value="checkuri"/>
+<label for="checkuri">Skip if target URI resolves.</label>
+</div>
+ <div>
+  <input type="hidden" name="action" value="publish_options" />
+  <input type="submit" name="apply" value="Submit"/>
+  <div>
+</form>
+<script>
+var coll = document.getElementsByClassName("collapsible");
+var i;
+
+for (i = 0; i < coll.length; i++) {
+  coll[i].addEventListener("click", function() {
+    this.classList.toggle("active");
+    var content = document.getElementById( this.id + '_content');
+    if (content.style.maxHeight){
+      content.style.maxHeight = null;
+    } else {
+      content.style.maxHeight = content.scrollHeight + "px";
+    }
+  });
+}
+</script>
+
+{% endblock %}
