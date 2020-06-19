@@ -4,6 +4,9 @@ Utilities to link Django to RDF stores and inferencers.
 
 Why: Allows semantic data models and rules to be used to generate rich views of content, and expose standardised access and query interfaces - such as SPARQL and the Linked Data Platform.  Conversely, allow use of Django to manage content in RDF stores :-)
 
+## compatibility
+Tested with django 1.11 + python 2.7 and django 3.0 with python 3.8
+
 ## Features
 * RDF serializer for Django objects driven by editable mapping rules
 * Configurable metadata properties for arbitrary Django objects.
@@ -15,6 +18,7 @@ RDF_IO has initial data that loads up common W3C namespaces and prefixes ready f
 	* Configureable ServiceBindings to RDF store APIs for different CRUD and inferencing tasks
 	* RDF source load and push to designated RDF store
 	* chainable inferencing support and persistence handling
+	* configuration variables scoped to publishing modes to support publishing to different stores for review and final publication
 
 
 ## installation
