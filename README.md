@@ -121,14 +121,29 @@ todo:
 
 ### Serialising within python
 ```
-from rdf_io.views import build_rdf
 from django.contrib.contenttypes.models import ContentType
+
+from rdflib import Graph
+
+from rdf_io.views import build_rdf
 from rdf_io.models import ObjectMapping
 
-ct = ContentType.objects.get(model=model)
-obj_mapping_list=ObjectMapping.objects.filter(content_type=ct)
-build_rdf(gr,obj, obj_mapping_list)  returns a rdflib.Graph()
-gr.serialize(format="turtle")
+from my_app.models import Task
+
+# This example assumes ...
+#   * you have created a model called `Task` and there’s at least one task
+#   * you have created a mapping for the Task model
+
+object_to_serialize = Task.objects.first()
+
+content_type = ContentType.objects.get(model='task')
+obj_mapping_list = ObjectMapping.objects.filter(content_type=content_type)
+
+graph = Graph()
+
+build_rdf(graph, object_to_serialize, obj_mapping_list, includemembers=True)
+
+print(graph.serialize(format="turtle"))
 ```
 ### Serialising using django views:
 
