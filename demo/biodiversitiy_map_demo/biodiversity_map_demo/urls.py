@@ -1,4 +1,4 @@
-"""biodiverstiy_map_demo URL Configuration
+"""biodiversitiy_map_demo URL Configuration
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/3.0/topics/http/urls/
@@ -19,6 +19,7 @@ from django.urls import path, include
 
 urlpatterns = [
     path('', include('biodiversity_map.urls')),
+    path('biodiversity_map/', include('biodiversity_map.urls')),
     path('rdf_io/', include('rdf_io.urls')),
     path('admin/', admin.site.urls),
 ]
