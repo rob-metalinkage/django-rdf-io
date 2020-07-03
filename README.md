@@ -4,6 +4,9 @@ Utilities to link Django to RDF stores and inferencers.
 
 Why: Allows semantic data models and rules to be used to generate rich views of content, and expose standardised access and query interfaces - such as SPARQL and the Linked Data Platform.  Conversely, allow use of Django to manage content in RDF stores :-)
 
+## compatibility
+Tested with django 1.11 + python 2.7 and django 3.0 with python 3.8
+
 ## Features
 * RDF serializer for Django objects driven by editable mapping rules
 * Configurable metadata properties for arbitrary Django objects.
@@ -15,6 +18,7 @@ RDF_IO has initial data that loads up common W3C namespaces and prefixes ready f
 	* Configureable ServiceBindings to RDF store APIs for different CRUD and inferencing tasks
 	* RDF source load and push to designated RDF store
 	* chainable inferencing support and persistence handling
+	* configuration variables scoped to publishing modes to support publishing to different stores for review and final publication
 
 
 ## installation
@@ -121,14 +125,29 @@ todo:
 
 ### Serialising within python
 ```
-from rdf_io.views import build_rdf
 from django.contrib.contenttypes.models import ContentType
+
+from rdflib import Graph
+
+from rdf_io.views import build_rdf
 from rdf_io.models import ObjectMapping
 
-ct = ContentType.objects.get(model=model)
-obj_mapping_list=ObjectMapping.objects.filter(content_type=ct)
-build_rdf(gr,obj, obj_mapping_list)  returns a rdflib.Graph()
-gr.serialize(format="turtle")
+from my_app.models import Task
+
+# This example assumes ...
+#   * you have created a model called `Task` and there’s at least one task
+#   * you have created a mapping for the Task model
+
+object_to_serialize = Task.objects.first()
+
+content_type = ContentType.objects.get(model='task')
+obj_mapping_list = ObjectMapping.objects.filter(content_type=content_type)
+
+graph = Graph()
+
+build_rdf(graph, object_to_serialize, obj_mapping_list, includemembers=True)
+
+print(graph.serialize(format="turtle"))
 ```
 ### Serialising using django views:
 

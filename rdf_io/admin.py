@@ -6,6 +6,9 @@ from .views import *
 from django import forms
 #from django.contrib.admin.widgets import SelectWidget
 from django.utils.safestring import mark_safe
+from django.contrib import messages
+from django.shortcuts import render
+from django.http import HttpResponseRedirect, HttpResponse
 
 class GenericMetaPropInline(admin.TabularInline):
     model = GenericMetaProp
@@ -132,11 +135,33 @@ class ImportedResourceAdmin(admin.ModelAdmin):
     list_display = ('description', 'subtype', '__unicode__')
     search_fields = ['description','file','remote']  
     inlines = [ ResourceMetaInline , ]    
-    
+    actions= ['publish_options', ]
+    resourcetype = 'importedresource'
     def get_queryset(self, request):
         qs = super(ImportedResourceAdmin, self).get_queryset(request)
         # import pdb; pdb.set_trace()
         return qs.filter(Q(subtype__isnull=True) | Q(subtype=IR ))      
+
+    def publish_options(self,request,queryset):
+        """Batch publish with a set of mode options"""
+        if 'apply' in request.POST:
+            # The user clicked submit on the intermediate form.
+            # Perform our update action:
+            if request.POST.get('mode') == "CANCEL" :
+                self.message_user(request,
+                              "Cancelled publish action")
+            else:
+                checkuri = 'checkuri' in request.POST
+                logfile= publish_set_action(queryset,self.resourcetype,check=checkuri,mode=request.POST.get('mode'))
+                self.message_user(request,
+                              mark_safe('started publishing in {} mode for {} {}s at <A HREF="{}" target="_log">{}</A>'.format(request.POST.get('mode'),queryset.count(),self.resourcetype, logfile,logfile) ) )
+            return HttpResponseRedirect(request.get_full_path())
+        return render(request,
+                      'admin/admin_publish.html',
+                      context={'schemes':queryset, 
+                        'pubvars': ConfigVar.getvars('PUBLISH') ,
+                        'reviewvars': ConfigVar.getvars('REVIEW') ,
+                        })
 
     
 class ObjectBoundListFilter(admin.SimpleListFilter):
