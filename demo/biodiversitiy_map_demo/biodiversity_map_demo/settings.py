@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django_extensions',
     'rdf_io',
+    'skosxl',
     'biodiversity_map',
 ]
 
