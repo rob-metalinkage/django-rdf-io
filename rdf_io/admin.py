@@ -110,7 +110,7 @@ class NamespaceAdmin(admin.ModelAdmin):
     list_display = ('uri','prefix','notes')
     fields = ('uri','prefix','notes')
     search_fields = ['uri','prefix' ]
-#    related_search_fields = {'concept' : ('pref_label','definition')}
+    related_search_fields = {'concept' : ('pref_label','definition')}
     #list_editable = ('name','slug')
     search_fields = ['uri','prefix']    
 

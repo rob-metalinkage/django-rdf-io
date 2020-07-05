@@ -642,7 +642,7 @@ class ObjectMapping(models.Model):
                 (app_label,content_type_label) = content_type_label.split(':')
             except:
                 pass # hope we can find it?
-        content_type = ContentType.objects.get(app_label=app_label.lower(),model=content_type_label.lower())
+        content_type = ContentType.objects.get(app_label=app_label.lower().strip(),model=content_type_label.lower().strip())
         defaults =         { "auto_push" : auto_push , 
               "id_attr" : idfield,
               "target_uri_expr" : tgt,

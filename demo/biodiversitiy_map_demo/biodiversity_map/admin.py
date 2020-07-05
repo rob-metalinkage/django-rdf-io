@@ -4,7 +4,6 @@ from django.contrib import admin
 
 from .models import GeoLocation, HabitatClass, Habitat, Domain, Kingdom, Family, Genus, Organism
 
-
 @admin.register(GeoLocation)
 class GeoLocationAdmin(admin.ModelAdmin):
     list_display = (
@@ -28,6 +27,7 @@ class HabitatClassAdmin(admin.ModelAdmin):
 
 @admin.register(Habitat)
 class HabitatAdmin(admin.ModelAdmin):
+    list_select_related = True
     list_display = ('habitat_id', 'name', 'description')
     raw_id_fields = ('habitat_classes',)
     search_fields = ('name',)

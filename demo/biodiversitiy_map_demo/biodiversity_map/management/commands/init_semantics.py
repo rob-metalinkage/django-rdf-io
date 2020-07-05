@@ -19,7 +19,7 @@ class Command(BaseCommand):
     help = 'Initialise model semantics.'
 
     def handle(self, *args, **options):
-        self.loaddata()
+        #self.loaddata()
 
         self.load_biodiversity_semantics()
 
@@ -52,19 +52,18 @@ class Command(BaseCommand):
         logging.debug("init semantics ... ")
 
         #(object_type,created) = ObjectType.objects.get_or_create(uri="skos:ConceptScheme", defaults = { "label" : "SKOS ConceptScheme" })
-
         #sm = ObjectMapping.new_mapping(object_type, "skosxl:Scheme", "skosxl: SKOS ConceptScheme", "uri", "uri" , auto_push=True)
     
         # specific mapping
         #am = AttributeMapping(scope=sm, attr="definition", predicate="skos:definition", is_resource=False).save()
 
         # biodiversity 
-        #Namespace.objects.get_or_create( uri='http://some_rdf_site.org/biomodels/', defaults = { 'prefix' : 'bio' , 'notes': 'Data model for biodiversity' } )
-        #Namespace.objects.get_or_create( uri='http://some_rdf_site.org/data/habitats/', defaults = { 'prefix' : 'hab' , 'notes': 'Habitat data' } )
+        Namespace.objects.get_or_create( uri='http://some_rdf_site.org/biomodels/', defaults = { 'prefix' : 'bio' , 'notes': 'Data model for biodiversity' } )
+        Namespace.objects.get_or_create( uri='http://some_rdf_site.org/data/habitats/', defaults = { 'prefix' : 'hab' , 'notes': 'Habitat data' } )
 
         (object_type,created) = ObjectType.objects.get_or_create(uri="bio:Habitat", defaults = { "label" : "Habitat class" })
 
-        sm = ObjectMapping.new_mapping(object_type, "biodiversity_map:Habitat ", "Habitats in RDF", "habitat_id", "hab:" , auto_push=False)
+        sm = ObjectMapping.new_mapping(object_type, "biodiversity_map:Habitat", "Habitats in RDF", "habitat_id", "hab:" , auto_push=False)
         # specific mapping
         am = AttributeMapping(scope=sm, attr="name", predicate="rdfs:label", is_resource=False).save()
 
