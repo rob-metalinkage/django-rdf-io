@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_extensions',
+    'django.contrib.admindocs',
     'rdf_io',
     'skosxl',
     'biodiversity_map',

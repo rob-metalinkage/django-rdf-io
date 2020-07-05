@@ -63,7 +63,8 @@ class Command(BaseCommand):
 
         (object_type,created) = ObjectType.objects.get_or_create(uri="bio:Habitat", defaults = { "label" : "Habitat class" })
 
-        sm = ObjectMapping.new_mapping(object_type, "biodiversity_map:Habitat", "Habitats in RDF", "habitat_id", "hab:" , auto_push=False)
+        # !! right now use quoted syntax, like "'hab:'" - this should be fixed in future releases
+        sm = ObjectMapping.new_mapping(object_type, "biodiversity_map:Habitat", "Habitats in RDF", "habitat_id", "'hab:'" , auto_push=False)
         # specific mapping
         am = AttributeMapping(scope=sm, attr="name", predicate="rdfs:label", is_resource=False).save()
 

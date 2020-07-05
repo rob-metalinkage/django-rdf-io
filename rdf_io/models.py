@@ -459,7 +459,7 @@ class RDFpath_Field(models.CharField):
     validators = [ validate_propertypath, ]
     def __init__(self, *args, **kwargs):
         kwargs['max_length'] = 500
-        kwargs['help_text']=_(u'space separated list of RDF property URIs (in form a:b or full URI) representing a nested set of properties in an RDF graph')
+        kwargs['help_text']=_('space separated list of RDF property URIs (in form a:b or full URI) representing a nested set of properties in an RDF graph')
         super( RDFpath_Field, self).__init__(*args, **kwargs)
         
 class CURIE_Field(models.CharField):
@@ -470,7 +470,7 @@ class CURIE_Field(models.CharField):
     validators = [ validate_urisyntax, ]
     def __init__(self, *args, **kwargs):
         kwargs['max_length'] = 200
-        kwargs['help_text']=_(u'use a:b or full URI')
+        kwargs['help_text']=_('use a:b or full URI')
         super( CURIE_Field, self).__init__(*args, **kwargs)
     
 class EXPR_Field(models.CharField):
@@ -480,7 +480,7 @@ class EXPR_Field(models.CharField):
     literal_form=None
     def __init__(self, *args, **kwargs):
         kwargs['max_length'] = 400
-        kwargs['help_text']=_(u'for a literal, use "quoted" syntax, for nested attribute use syntax a.b.c')
+        kwargs['help_text']=_('for a literal, use "quoted" syntax, for nested attribute use syntax a.b.c')
         super( EXPR_Field, self).__init__(*args, **kwargs)
 
 
@@ -491,7 +491,7 @@ class FILTER_Field(models.CharField):
 
     def __init__(self, *args, **kwargs):
         kwargs['max_length'] = 400
-        kwargs['help_text']=_(u'path=value, eg label__label_text="frog"')
+        kwargs['help_text']=_('path=value, eg label__label_text="frog"')
         super( FILTER_Field, self).__init__(*args, **kwargs)
         
     
@@ -510,7 +510,7 @@ class Namespace(models.Model) :
     
     uri = models.CharField('uri',max_length=100, unique=True, null=False)
     prefix = models.CharField('prefix',max_length=8,unique=True,null=False)
-    notes = models.TextField(_(u'change note'),blank=True)
+    notes = models.TextField(_('change note'),blank=True)
 
     def natural_key(self):
         return(self.uri,)
@@ -528,8 +528,8 @@ class Namespace(models.Model) :
             return None
       
     class Meta(object): 
-        verbose_name = _(u'namespace')
-        verbose_name_plural = _(u'namespaces')
+        verbose_name = _('namespace')
+        verbose_name_plural = _('namespaces')
     def __str__(self):
         return self.uri    
 
@@ -548,10 +548,10 @@ class GenericMetaProp(models.Model) :
         Works with the namespace object to allow short forms of metadata to be displayed
     """
     objects = GenericMetaPropManager()
-    namespace = models.ForeignKey(Namespace,models.PROTECT,blank=True, null=True, verbose_name=_(u'namespace'))
-    propname =  models.CharField(_(u'name'),blank=True,max_length=250,editable=True)
+    namespace = models.ForeignKey(Namespace,models.PROTECT,blank=True, null=True, verbose_name=_('namespace'))
+    propname =  models.CharField(_('name'),blank=True,max_length=250,editable=True)
     uri = CURIE_Field(blank=True, unique=True)
-    definition  = models.TextField(_(u'definition'), blank=True)
+    definition  = models.TextField(_('definition'), blank=True)
     def natural_key(self):
         return  ( ":".join((self.namespace.prefix,self.propname)) if self.namespace else self.uri , )
     def __str__(self):              # _!_unicode__ on Python 2
@@ -582,7 +582,7 @@ class AttachedMetadata(models.Model):
         extensible metadata using rdf_io managed reusable generic metadata properties
     """
     metaprop   =  models.ForeignKey(GenericMetaProp, models.PROTECT,verbose_name='property') 
-    value = models.CharField(_(u'value'),max_length=2000)
+    value = models.CharField(_('value'),max_length=2000)
     def __str__(self):
         return str(self.metaprop.__str__())   
     def getRDFValue(self):
@@ -603,8 +603,8 @@ class ObjectType(models.Model):
         Object types may be URI or CURIEs using declared prefixes
     """
     objects = ObjectTypeManager()
-    uri = CURIE_Field(_(u'URI'),blank=False,editable=True)
-    label = models.CharField(_(u'Label'),blank=False,max_length=250,editable=True)
+    uri = CURIE_Field(_('URI'),blank=False,editable=True)
+    label = models.CharField(_('Label'),blank=False,max_length=250,editable=True)
     
     def natural_key(self):
         return (self.uri,)
@@ -623,12 +623,12 @@ class ObjectMapping(models.Model):
     """
     objects = ObjectMappingManager()
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    name = models.CharField(_(u'Name'),help_text=_(u'unique identifying label'),unique=True,blank=False,max_length=250,editable=True)
-    auto_push = models.BooleanField(_(u'auto_push'),help_text=_(u'set this to push updates to these object to the RDF store automatically'))
-    id_attr = models.CharField(_(u'ID Attribute'),help_text=_(u'for nested attribute use syntax a.b.c'),blank=False,max_length=250,editable=True)
-    target_uri_expr = EXPR_Field(_(u'target namespace expression'), blank=False,editable=True)
-    obj_type = models.ManyToManyField(ObjectType, help_text=_(u'set this to generate a object rdf:type X statement' ))
-    filter = FILTER_Field(_(u'Filter'), null=True, blank=True ,editable=True)
+    name = models.CharField(_('Name'),help_text=_('unique identifying label'),unique=True,blank=False,max_length=250,editable=True)
+    auto_push = models.BooleanField(_('auto_push'),help_text=_('set this to push updates to these object to the RDF store automatically'))
+    id_attr = models.CharField(_('ID Attribute'),help_text=_('for nested attribute use syntax a.b.c'),blank=False,max_length=250,editable=True)
+    target_uri_expr = EXPR_Field(_('target namespace expression'), blank=False,editable=True)
+    obj_type = models.ManyToManyField(ObjectType, help_text=_('set this to generate a object rdf:type X statement' ))
+    filter = FILTER_Field(_('Filter'), null=True, blank=True ,editable=True)
     def natural_key(self):
         return (self.name,)    
   
@@ -642,7 +642,7 @@ class ObjectMapping(models.Model):
                 (app_label,content_type_label) = content_type_label.split(':')
             except:
                 pass # hope we can find it?
-        content_type = ContentType.objects.get(app_label=app_label.lower().strip(),model=content_type_label.lower().strip())
+        content_type = ContentType.objects.get(app_label=app_label.lower().strip(),model=content_type_label.lower().strip() )
         defaults =         { "auto_push" : auto_push , 
               "id_attr" : idfield,
               "target_uri_expr" : tgt,
@@ -666,10 +666,10 @@ class AttributeMapping(models.Model):
         records a mapping from an object mapping that defines a relation from the object to a value using a predicate
     """
     scope = models.ForeignKey(ObjectMapping,models.PROTECT)
-    attr = EXPR_Field(_(u'source attribute'),help_text=_(u'literal value or path (attribute[filter].)* with optional @element or ^^element eg locationname[language=].name@language.  filter values are empty (=not None), None, or a string value'),blank=False,editable=True)
-    # filter = FILTER_Field(_(u'Filter'), null=True, blank=True,editable=True)
-    predicate = CURIE_Field(_(u'predicate'),blank=False,editable=True,help_text=_(u'URI or CURIE. Use :prop.prop.prop form to select a property of the mapped object to use as the predicate'))
-    is_resource = models.BooleanField(_(u'as URI'))
+    attr = EXPR_Field(_('source attribute'),help_text=_('literal value or path (attribute[filter].)* with optional @element or ^^element eg locationname[language=].name@language.  filter values are empty (=not None), None, or a string value'),blank=False,editable=True)
+    # filter = FILTER_Field(_('Filter'), null=True, blank=True,editable=True)
+    predicate = CURIE_Field(_('predicate'),blank=False,editable=True,help_text=_('URI or CURIE. Use :prop.prop.prop form to select a property of the mapped object to use as the predicate'))
+    is_resource = models.BooleanField(_('as URI'))
     
     def __str__(self):
         return ( ' '.join((self.attr, self.predicate )))
@@ -680,10 +680,10 @@ class EmbeddedMapping(models.Model):
         records a mapping for a complex data structure
     """
     scope = models.ForeignKey(ObjectMapping,models.PROTECT,)
-    attr = EXPR_Field(_(u'source attribute'),help_text=_(u'attribute - if empty nothing generated, if multivalued will be iterated over'))
-    predicate = CURIE_Field(_(u'predicate'),blank=False,editable=True, help_text=_(u'URI or CURIE. Use :prop.prop.prop form to select a property of the mapped object to use asthe predicate'))
-    struct = models.TextField(_(u'object structure'),max_length=2000, help_text=_(u' ";" separated list of <em>predicate</em> <em>attribute expr</em>  where attribute expr a model field or "literal" or <uri> - in future may be an embedded struct inside {} '),blank=False,editable=True)
-    use_blank = models.BooleanField(_(u'embed as blank node'), default=True)
+    attr = EXPR_Field(_('source attribute'),help_text=_('attribute - if empty nothing generated, if multivalued will be iterated over'))
+    predicate = CURIE_Field(_('predicate'),blank=False,editable=True, help_text=_('URI or CURIE. Use :prop.prop.prop form to select a property of the mapped object to use asthe predicate'))
+    struct = models.TextField(_('object structure'),max_length=2000, help_text=_(' ";" separated list of <em>predicate</em> <em>attribute expr</em>  where attribute expr a model field or "literal" or <uri> - in future may be an embedded struct inside {} '),blank=False,editable=True)
+    use_blank = models.BooleanField(_('embed as blank node'), default=True)
     
     def __str__(self):
         return ( ' '.join(('struct:',self.attr, self.predicate )))
@@ -694,9 +694,9 @@ class ChainedMapping(models.Model):
         Chains to a specific mapping to nest the resulting graph within the current serialisation
     """
     scope = models.ForeignKey(ObjectMapping,models.PROTECT,editable=False, )
-    attr = EXPR_Field(_(u'source attribute'),help_text=_(u'attribute - if empty nothing generated, if multivalued will be iterated over'))
-    predicate = CURIE_Field(_(u'predicate'),blank=False,editable=True, help_text=_(u'URI or CURIE. Use :prop.prop.prop form to select a property of the mapped object to use asthe predicate'))
-    chainedMapping = models.ForeignKey(ObjectMapping, models.PROTECT,blank=False,editable=True, related_name='chained',help_text=_(u'Mapping to nest, for each value of attribute. may be recursive'))
+    attr = EXPR_Field(_('source attribute'),help_text=_('attribute - if empty nothing generated, if multivalued will be iterated over'))
+    predicate = CURIE_Field(_('predicate'),blank=False,editable=True, help_text=_('URI or CURIE. Use :prop.prop.prop form to select a property of the mapped object to use asthe predicate'))
+    chainedMapping = models.ForeignKey(ObjectMapping, models.PROTECT,blank=False,editable=True, related_name='chained',help_text=_('Mapping to nest, for each value of attribute. may be recursive'))
     
     def __str__(self):
         return ( ' '.join(('chained mapping:',self.attr, self.predicate, self.chainedMapping.name )))

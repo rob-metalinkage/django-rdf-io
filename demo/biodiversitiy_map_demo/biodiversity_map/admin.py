@@ -35,6 +35,7 @@ class HabitatAdmin(admin.ModelAdmin):
 
 @admin.register(Domain)
 class DomainAdmin(admin.ModelAdmin):
+    list_select_related = True
     list_display = ('domain_id', 'name', 'description')
     search_fields = ('name',)
 
@@ -76,6 +77,7 @@ class GenusAdmin(admin.ModelAdmin):
 
 @admin.register(Organism)
 class OrganismAdmin(admin.ModelAdmin):
+    list_select_related = True
     list_display = (
         'organism_id',
         'species',

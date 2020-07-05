@@ -22,5 +22,6 @@ urlpatterns = [
     path('biodiversity_map/', include('biodiversity_map.urls')),
     path('rdf_io/', include('rdf_io.urls')),
     path('skosxl/', include('skosxl.urls')),
+    path('admin/doc/', include('django.contrib.admindocs.urls')),
     path('admin/', admin.site.urls),
 ]
