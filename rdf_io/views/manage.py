@@ -1,6 +1,6 @@
 # # -*- coding:utf-8 -*-
 #from django.shortcuts import render_to_response, redirect
-from rdf_io.models import ObjectMapping,Namespace,AttributeMapping,EmbeddedMapping, ObjectType, getattr_path, apply_pathfilter, expand_curie, dequote
+from rdf_io.models import ObjectMapping,Namespace,AttributeMapping,EmbeddedMapping, ObjectType, ConfigVar, getattr_path, apply_pathfilter, expand_curie, dequote
 from rdf_io.views import get_rdfstore,publish
 from django.template import RequestContext
 from django.contrib.contenttypes.models import ContentType
@@ -31,7 +31,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 def show_config(request) :
-    return HttpResponse(json.dumps( ConfigVar.objects.all() ))
+    config = [ str(conf) for conf in ConfigVar.objects.all() ]
+    return HttpResponse(str(config)) #
 
 def sync_remote(request,models):
     """

@@ -62,3 +62,7 @@ target/
 .ipynb_checkpoints
 rdf_io/migrations/
 *.backup
+
+# MS VSCode
+
+.vscode
