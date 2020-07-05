@@ -132,7 +132,7 @@ class ResourceMetaInline(admin.TabularInline):
 IR = ContentType.objects.get_for_model(ImportedResource)
    
 class ImportedResourceAdmin(admin.ModelAdmin):
-    list_display = ('description', 'subtype', '__unicode__')
+    list_display = ('description', 'subtype', '__str__')
     search_fields = ['description','file','remote']  
     inlines = [ ResourceMetaInline , ]    
     actions= ['publish_options', ]

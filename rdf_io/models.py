@@ -8,11 +8,6 @@ from builtins import object
 import logging
 logger = logging.getLogger(__name__)
 
-try:
-    from django.utils.encoding import python_2_unicode_compatible
-except:
-    from six import python_2_unicode_compatible
-
 from django.db import models
 from django.conf import settings
 
@@ -535,7 +530,7 @@ class Namespace(models.Model) :
     class Meta(object): 
         verbose_name = _(u'namespace')
         verbose_name_plural = _(u'namespaces')
-    def __unicode__(self):
+    def __str__(self):
         return self.uri    
 
 class GenericMetaPropManager(models.Manager):
@@ -559,7 +554,7 @@ class GenericMetaProp(models.Model) :
     definition  = models.TextField(_(u'definition'), blank=True)
     def natural_key(self):
         return  ( ":".join((self.namespace.prefix,self.propname)) if self.namespace else self.uri , )
-    def __unicode__(self):              # __unicode__ on Python 2
+    def __str__(self):              # _!_unicode__ on Python 2
         return self.natural_key()[0]
     def asURI(self):
         """ Returns fully qualified uri form of property """
@@ -588,8 +583,8 @@ class AttachedMetadata(models.Model):
     """
     metaprop   =  models.ForeignKey(GenericMetaProp, models.PROTECT,verbose_name='property') 
     value = models.CharField(_(u'value'),max_length=2000)
-    def __unicode__(self):
-        return str(self.metaprop.__unicode__())   
+    def __str__(self):
+        return str(self.metaprop.__str__())   
     def getRDFValue(self):
         """ returns value in appropriate datatype """
         return makenode(value)
@@ -615,7 +610,7 @@ class ObjectType(models.Model):
         return (self.uri,)
     
     # check short form is registered
-    def __unicode__(self):              # __unicode__ on Python 2
+    def __str__(self):              # _!_unicode__ on Python 2
         return " -- ".join((self.uri,self.label ))
 
 class ObjectMappingManager(models.Manager):
@@ -637,7 +632,7 @@ class ObjectMapping(models.Model):
     def natural_key(self):
         return (self.name,)    
   
-    def __unicode__(self):              # __unicode__ on Python 2
+    def __str__(self):              # _!_unicode__ on Python 2
         return self.name 
  
     @staticmethod
@@ -676,7 +671,7 @@ class AttributeMapping(models.Model):
     predicate = CURIE_Field(_(u'predicate'),blank=False,editable=True,help_text=_(u'URI or CURIE. Use :prop.prop.prop form to select a property of the mapped object to use as the predicate'))
     is_resource = models.BooleanField(_(u'as URI'))
     
-    def __unicode__(self):
+    def __str__(self):
         return ( ' '.join((self.attr, self.predicate )))
 
 class EmbeddedMapping(models.Model):
@@ -690,7 +685,7 @@ class EmbeddedMapping(models.Model):
     struct = models.TextField(_(u'object structure'),max_length=2000, help_text=_(u' ";" separated list of <em>predicate</em> <em>attribute expr</em>  where attribute expr a model field or "literal" or <uri> - in future may be an embedded struct inside {} '),blank=False,editable=True)
     use_blank = models.BooleanField(_(u'embed as blank node'), default=True)
     
-    def __unicode__(self):
+    def __str__(self):
         return ( ' '.join(('struct:',self.attr, self.predicate )))
 
 class ChainedMapping(models.Model):
@@ -703,7 +698,7 @@ class ChainedMapping(models.Model):
     predicate = CURIE_Field(_(u'predicate'),blank=False,editable=True, help_text=_(u'URI or CURIE. Use :prop.prop.prop form to select a property of the mapped object to use asthe predicate'))
     chainedMapping = models.ForeignKey(ObjectMapping, models.PROTECT,blank=False,editable=True, related_name='chained',help_text=_(u'Mapping to nest, for each value of attribute. may be recursive'))
     
-    def __unicode__(self):
+    def __str__(self):
         return ( ' '.join(('chained mapping:',self.attr, self.predicate, self.chainedMapping.name )))
  
 MODE_CHOICES = (
@@ -719,7 +714,7 @@ class ConfigVar(models.Model):
     value=models.CharField(max_length=255, null=False, blank=True , verbose_name='Variable value')
     mode=models.CharField( verbose_name='Mode scope', choices=MODE_CHOICES,null=True,blank=True,max_length=10 )
     
-    def __unicode__(self):
+    def __str__(self):
         return ( ' '.join(('var:',self.var, ' (', str(self.mode), ') = ', self.value )))
     
     @staticmethod
@@ -798,7 +793,7 @@ class ServiceBinding(models.Model):
     on_delete_service=models.ForeignKey('ServiceBinding', models.PROTECT, related_name='on_delete',verbose_name='Deletion service', blank=True, null=True, help_text='This will be invoked on object deletion if specified, and also if the binding is "replace" - which allows for a specific pre-deletion step if not supported by the repository API natively')
     on_fail_service=models.ForeignKey('ServiceBinding', models.PROTECT, related_name='on_fail',verbose_name='On fail service', blank=True, null=True, help_text='Overrides default failure reporting')
 
-    def __unicode__(self):
+    def __str__(self):
         return self.title + "(" + self.service_api + " : " + self.service_url + ")"
      
     @staticmethod 
@@ -840,7 +835,7 @@ TYPE_CHOICES = (
       ( TYPE_QUERY, 'Query template - SPARQL - for future use' ),
       ( TYPE_VALIDATION, 'Validation rule - for future use' ), 
     )
-@python_2_unicode_compatible       
+       
 class ImportedResource(models.Model):
 
     
@@ -858,11 +853,11 @@ class ImportedResource(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
     # add per user details?
  
-    def __unicode__(self):
-        return ( ' '.join( [_f for _f in (self.resource_type,':', self.file.__unicode__(), self.remote ) if _f]))
+    def __str__(self):
+        return ( ' '.join( [_f for _f in (self.resource_type,':', self.file.__str__(), self.remote ) if _f]))
  
     def __str__(self):
-        return ( ' '.join( [_f for _f in (self.resource_type,':', self.file.__unicode__(), self.remote ) if _f]))
+        return ( ' '.join( [_f for _f in (self.resource_type,':', self.file.__str__(), self.remote ) if _f]))
         
 #    def clean(self):
 #        import fields; pdb.set_trace()
@@ -879,7 +874,7 @@ class ImportedResource(models.Model):
         if(not self.subtype):
             self.subtype = ContentType.objects.get_for_model(self.__class__)
         if not self.description:
-            self.description = self.__unicode__()
+            self.description = self.__str__()
         self.savedgraph = None
         super(ImportedResource, self).save(*args,**kwargs)
         
@@ -948,7 +943,7 @@ def execute_service_chain(model,obj, mode, gr, chain):
     for next_binding in chain :
         newgr = gr  # start off with original RDF graph for each new chain
         while next_binding :
-            logger.info ( " -- ".join( (mode, str(obj), next_binding.__unicode__() ) ) )
+            logger.info ( " -- ".join( (mode, str(obj), next_binding.__str__() ) ) )
             if next_binding.binding_type == ServiceBinding.INFERENCE :
                 newgr = inference(model, obj, next_binding, newgr, mode)
             elif next_binding.binding_type in ( ServiceBinding.PERSIST_UPDATE, ServiceBinding.PERSIST_REPLACE, ServiceBinding.PERSIST_CREATE ) :

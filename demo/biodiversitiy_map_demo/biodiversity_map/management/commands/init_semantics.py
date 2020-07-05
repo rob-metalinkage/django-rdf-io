@@ -59,8 +59,8 @@ class Command(BaseCommand):
         #am = AttributeMapping(scope=sm, attr="definition", predicate="skos:definition", is_resource=False).save()
 
         # biodiversity 
-        Namespace.objects.get_or_create( uri='http://some_rdf_site.org/biomodels/', defaults = { 'prefix' : 'bio' , 'notes': 'Data model for biodiversity' } )
-        Namespace.objects.get_or_create( uri='http://some_rdf_site.org/data/habitats/', defaults = { 'prefix' : 'hab' , 'notes': 'Habitat data' } )
+        #Namespace.objects.get_or_create( uri='http://some_rdf_site.org/biomodels/', defaults = { 'prefix' : 'bio' , 'notes': 'Data model for biodiversity' } )
+        #Namespace.objects.get_or_create( uri='http://some_rdf_site.org/data/habitats/', defaults = { 'prefix' : 'hab' , 'notes': 'Habitat data' } )
 
         (object_type,created) = ObjectType.objects.get_or_create(uri="bio:Habitat", defaults = { "label" : "Habitat class" })
 
