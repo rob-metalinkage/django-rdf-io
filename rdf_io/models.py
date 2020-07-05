@@ -535,9 +535,13 @@ class Namespace(models.Model) :
     class Meta(object): 
         verbose_name = _(u'namespace')
         verbose_name_plural = _(u'namespaces')
+        
     def __unicode__(self):
         return self.uri    
 
+    def __str__(self):
+        return str( " =  ".join(filter(None,(self.prefix,self.uri))))
+        
 class GenericMetaPropManager(models.Manager):
     def get_by_natural_key(self, curie):
         try:
@@ -564,6 +568,9 @@ class GenericMetaProp(models.Model) :
     def asURI(self):
         """ Returns fully qualified uri form of property """
         return uri
+
+    def __str__(self):
+        return str(self.uri)
         
     def save(self,*args,**kwargs):
         if self.namespace :
