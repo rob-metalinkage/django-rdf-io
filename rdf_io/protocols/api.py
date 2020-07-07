@@ -2,7 +2,6 @@ from django.db import models
 from django.conf import settings
 import os
 import rdflib
-import urllib
 
 import requests
 
@@ -22,8 +21,8 @@ class RDFStoreException(Exception):
     pass
     
 def push_to_store(binding,  model, obj, gr, mode='PUBLISH' ):
-    from rdf4j import rdf4j_push, rdf4j_get
-    from ldp import ldp_push
+    from .rdf4j import rdf4j_push, rdf4j_get
+    from .ldp import ldp_push
     """ push an object via its serialisation rules to a store via a ServiceBinding """
     if not binding:
         try:
@@ -50,6 +49,10 @@ push_to_store.RDFStoreException = RDFStoreException
  
 def resolveTemplate(template, model, obj,mode='PUBLISH') :
     from rdf_io.models import getattr_path, ConfigVar
+    try:
+        from urllib.parse import quote_plus
+    except:
+        from urllib import quote_plus
     vals = { 'model' : model }
     #import pdb; pdb.set_trace()
     for (literal,param,repval,conv) in Formatter().parse(template) :
@@ -63,7 +66,7 @@ def resolveTemplate(template, model, obj,mode='PUBLISH') :
                     raise Exception( "template references unset ConfigVariable %s" % param[1:])
             else:
                 try:
-                    vals[param] = urllib.quote_plus( str(iter(getattr_path(obj,param)).next()) )
+                    vals[param] = quote_plus( getattr_path(obj,param).pop()) 
                 except:
                     if param == 'slug'  :
                         vals[param] = obj.id
@@ -78,13 +81,11 @@ def inference(model, obj, inferencer, gr, mode ):
     
     use configured service binding to push an object to the inferencer, depending on its API type, perform inferencing using whatever
     rules have been set up, and return the new axioms, for disposition using the persistence rules (service bindings) for the resource """
-    from rdf4j import rdf4j_push,rdf4j_get
-    from ldp import ldp_push
+    # import pdb; pdb.set_trace()
+    from .rdf4j import rdf4j_push,rdf4j_get
+    from .ldp import ldp_push
     from rdf_io.models import ServiceBinding
     
-
-   
-#    import pdb; pdb.set_trace()
     if inferencer.service_api == "RDF4JREST" :
         rdfstore = { 'server_api' : inferencer.service_api , 'server' : inferencer.service_url ,'target' : inferencer.resource }
 
@@ -107,7 +108,7 @@ def rdf_delete( binding, model, obj, mode ):
     
     Typically used for cleanup after inferencing and on post_delete signals for autompublished models."""
     from rdf_io.models import ServiceBinding
-    from rdf4j import rdf4j_delete
+    from .rdf4j import rdf4j_delete
 #    print "Asked to delete from %s %s " % ( binding.service_url, binding.resource)
     rdfstore = { 'server_api' : binding.service_api , 'server' : binding.service_url , 'target' : binding.resource }
  

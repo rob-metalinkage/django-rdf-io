@@ -20,7 +20,6 @@ class GenericMetaPropInline(admin.TabularInline):
 
 def publish_set_background(queryset,model,check,mode,logf):
     from django.core.files import File
-    # import pdb; pdb.set_trace()
     import time
     
     with open(logf,'w') as f:
@@ -48,7 +47,7 @@ def publish_set_action(queryset,model,check=False,mode='PUBLISH'):
     try:
         logf = os.path.join(settings.BATCH_RDFPUB_LOG, logfname)
     except:
-        logf = os.path.join(settings.STATIC_ROOT,logfname)
+        logf = os.path.join(settings.STATIC_ROOT if settings.STATIC_ROOT else '' ,logfname)
     t = threading.Thread(target=publish_set_background, args=(queryset,model,check,mode,logf), kwargs={})
     t.setDaemon(True)
     t.start()
