@@ -535,9 +535,13 @@ class Namespace(models.Model) :
     class Meta(object): 
         verbose_name = _(u'namespace')
         verbose_name_plural = _(u'namespaces')
+        
     def __unicode__(self):
         return self.uri    
 
+    def __str__(self):
+        return str( " =  ".join(filter(None,(self.prefix,self.uri))))
+        
 class GenericMetaPropManager(models.Manager):
     def get_by_natural_key(self, curie):
         try:
@@ -564,6 +568,9 @@ class GenericMetaProp(models.Model) :
     def asURI(self):
         """ Returns fully qualified uri form of property """
         return uri
+
+    def __str__(self):
+        return str(self.uri)
         
     def save(self,*args,**kwargs):
         if self.namespace :
@@ -639,7 +646,9 @@ class ObjectMapping(models.Model):
   
     def __unicode__(self):              # __unicode__ on Python 2
         return self.name 
- 
+        
+    def __str__(self):
+        return str( self.__unicode__())
     @staticmethod
     def new_mapping(object_type,content_type_label, title, idfield, tgt,filter=None, auto_push=False, app_label=None):
         if not app_label :
@@ -722,6 +731,9 @@ class ConfigVar(models.Model):
     def __unicode__(self):
         return ( ' '.join(('var:',self.var, ' (', str(self.mode), ') = ', self.value )))
     
+    def __str__(self):
+        return str( self.__unicode__())
+     
     @staticmethod
     def getval(var,mode):
         try:
@@ -800,7 +812,10 @@ class ServiceBinding(models.Model):
 
     def __unicode__(self):
         return self.title + "(" + self.service_api + " : " + self.service_url + ")"
-     
+    
+    def __str__(self):
+        return str( self.__unicode__())
+        
     @staticmethod 
     def get_service_bindings(model,bindingtypes):
         ct = ContentType.objects.get(model=model)
@@ -859,10 +874,10 @@ class ImportedResource(models.Model):
     # add per user details?
  
     def __unicode__(self):
-        return ( ' '.join( [_f for _f in (self.resource_type,':', self.file.__unicode__(), self.remote ) if _f]))
+        return ( ' '.join( [_f for _f in (self.resource_type,':', self.file.name, self.remote ) if _f]))
  
     def __str__(self):
-        return ( ' '.join( [_f for _f in (self.resource_type,':', self.file.__unicode__(), self.remote ) if _f]))
+        return str( self.__unicode__() )
         
 #    def clean(self):
 #        import fields; pdb.set_trace()
