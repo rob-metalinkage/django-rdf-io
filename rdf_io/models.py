@@ -874,10 +874,10 @@ class ImportedResource(models.Model):
     # add per user details?
  
     def __unicode__(self):
-        return ( ' '.join( [_f for _f in (self.resource_type,':', self.file.__unicode__(), self.remote ) if _f]))
+        return ( ' '.join( [_f for _f in (self.resource_type,':', self.file.name, self.remote ) if _f]))
  
     def __str__(self):
-        return str( ' '.join( [_f for _f in (self.resource_type,':', self.file.__unicode__(), self.remote ) if _f]))
+        return str( self.__unicode__() )
         
 #    def clean(self):
 #        import fields; pdb.set_trace()
