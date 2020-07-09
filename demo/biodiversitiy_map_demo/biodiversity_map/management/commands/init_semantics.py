@@ -8,7 +8,7 @@ from django.core.management import  call_command
 from django.conf import settings
 
 from rdf_io.models import Namespace, ObjectType, ObjectMapping, AttributeMapping, ContentType,  ChainedMapping
-from biodiversity_map.models import GeoLocation, Habitat,  Domain, Family, Genus, Organism
+from biodiversity_map.models import SKOS_Biodiversity, GeoLocation, Habitat,  Domain, Family, Genus, Organism
 
 class Command(BaseCommand):
     """see https://docs.djangoproject.com/en/1.9/howto/custom-management-commands/ for more details
@@ -57,15 +57,5 @@ class Command(BaseCommand):
         # specific mapping
         #am = AttributeMapping(scope=sm, attr="definition", predicate="skos:definition", is_resource=False).save()
 
-        # biodiversity 
-        Namespace.objects.get_or_create( uri='http://some_rdf_site.org/biomodels/', defaults = { 'prefix' : 'bio' , 'notes': 'Data model for biodiversity' } )
-        Namespace.objects.get_or_create( uri='http://some_rdf_site.org/data/habitats/', defaults = { 'prefix' : 'hab' , 'notes': 'Habitat data' } )
-
-        (object_type,created) = ObjectType.objects.get_or_create(uri="bio:Habitat", defaults = { "label" : "Habitat class" })
-
-        # !! right now use quoted syntax, like "'hab:'" - this should be fixed in future releases
-        sm = ObjectMapping.new_mapping(object_type, "biodiversity_map:Habitat", "Habitats in RDF", "habitat_id", "'hab:'" , auto_push=False)
-        # specific mapping
-        am = AttributeMapping(scope=sm, attr="name", predicate="rdfs:label", is_resource=False).save()
-
+        SKOS_Biodiversity.init_SKOS_models_db()
 

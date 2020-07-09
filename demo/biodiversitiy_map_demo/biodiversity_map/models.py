@@ -1,5 +1,27 @@
 from django.db import models
 
+class SKOS_Biodiversity:
+    @staticmethod
+    def init_SKOS_models_db():
+        """[summary]
+
+        :return: [description]
+        :rtype: [type]
+        """
+        # biodiversity namespaces
+        Namespace.objects.get_or_create( uri='http://some_rdf_site.org/biomodels/', defaults = { 'prefix' : 'bio' , 'notes': 'Data model for biodiversity' } )
+        Namespace.objects.get_or_create( uri='http://some_rdf_site.org/data/geolocation/', defaults = { 'prefix' : 'geoloc' , 'notes': 'Geolocation data' } )
+        Namespace.objects.get_or_create( uri='http://some_rdf_site.org/data/habitats/', defaults = { 'prefix' : 'hab' , 'notes': 'Habitat data' } )
+
+        GeoLocation.add_SKOS_mapping_db()
+        Habitat.add_SKOS_mapping_db()
+        Domain.add_SKOS_mapping_db()
+        Kingdom.add_SKOS_mapping_db()
+        Family.add_SKOS_mapping_db()
+        Genus.add_SKOS_mapping_db()
+        Organism.add_SKOS_mapping_db()
+
+
 class GeoLocation(models.Model):
     """ generic geo location information class to store location data, like DD: 54.0915461, 13.4028547 """
     geoinfo_id = models.AutoField(primary_key=True)
@@ -16,8 +38,16 @@ class GeoLocation(models.Model):
     
     def __str__(self):
         return self.name or "" # self.openstreetmap
+  
+    @staticmethod
+    def add_SKOS_mapping_db():
+        (object_type,created) = ObjectType.objects.get_or_create(uri="geloc:Geolocation", defaults = { "label" : "Geolocation class" })
 
-
+        # !! right now use quoted syntax, like "'hab:'" - this should be fixed in future releases
+        sm = ObjectMapping.new_mapping(object_type, "biodiversity_map:Geolocatino", "Geolocation in RDF", "geolocation_id", "'geoloc:'" , auto_push=False)
+        # specific mapping
+        am = AttributeMapping(scope=sm, attr="name", predicate="rdfs:label", is_resource=False).save()
+    
 class HabitatClass(models.Model):
     """ classes of habitates, like maritim, terrestric, shore, ..  """
     class_id = models.AutoField(primary_key=True)
@@ -47,6 +77,17 @@ class Habitat(models.Model):
     def __repr__(self):
         return self.contrib_caption or u''
 
+    @staticmethod
+    def add_SKOS_mapping_db():
+        Namespace.objects.get_or_create( uri='http://some_rdf_site.org/data/habitats/', defaults = { 'prefix' : 'hab' , 'notes': 'Habitat data' } )
+
+        (object_type,created) = ObjectType.objects.get_or_create(uri="bio:Habitat", defaults = { "label" : "Habitat class" })
+
+        # !! right now use quoted syntax, like "'hab:'" - this should be fixed in future releases
+        sm = ObjectMapping.new_mapping(object_type, "biodiversity_map:Habitat", "Habitats in RDF", "habitat_id", "'hab:'" , auto_push=False)
+        # specific mapping
+        am = AttributeMapping(scope=sm, attr="name", predicate="rdfs:label", is_resource=False).save()
+
 class Domain(models.Model):
     """ taxonomic domain / superkingdom / empire: Archaea, Bacteria, and Eukarya """
     domain_id = models.AutoField(primary_key=True)
@@ -61,6 +102,12 @@ class Domain(models.Model):
         
     #~ class Meta:
         #~ verbose_name_plural = ''
+
+    @staticmethod
+    def add_SKOS_mapping_db():
+        # add mapping here ...
+        pass
+
 
 class Kingdom(models.Model):
     """ taxonomic Kingdom / regnum : Animalia, Plantae, Fungi, Protista, 
@@ -77,6 +124,11 @@ class Kingdom(models.Model):
         
     def __repr__(self):
         return self.name or u''
+
+    @staticmethod
+    def add_SKOS_mapping_db():
+        # add mapping here ...
+        pass
 
 class Family(models.Model):
     """ taxonomic Family """
@@ -96,6 +148,11 @@ class Family(models.Model):
     class Meta:
         verbose_name_plural = 'Families'
 
+    @staticmethod
+    def add_SKOS_mapping_db():
+        # add mapping here ...
+        pass
+
 class Genus(models.Model):
     """ taxonomic Genus """
     genus_id = models.AutoField(primary_key=True)
@@ -113,6 +170,11 @@ class Genus(models.Model):
         
     class Meta:
         verbose_name_plural = 'Genera'
+    
+    @staticmethod
+    def add_SKOS_mapping_db():
+        # add mapping here ...
+        pass
 
 class Organism(models.Model):
     """ organism / species / strain  or cell line """
@@ -126,3 +188,11 @@ class Organism(models.Model):
     geolocation = models.ManyToManyField(GeoLocation, blank=True, help_text="orgenism's geolocation")
 
     description = models.TextField(blank=True, help_text="description of the organism")
+
+    def __str__(self):
+        return self.species or ''
+
+    @staticmethod
+    def add_SKOS_mapping_db():
+        # add mapping here ...
+        pass
