@@ -29,7 +29,8 @@ setup(
     zip_safe=False,
     install_requires = ['rdflib>=4.0',
                         'rdflib-jsonld',
-                        'requests'
+                        'requests',
+                        'six'
                         ]
 
 )
