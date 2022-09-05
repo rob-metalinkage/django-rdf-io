@@ -7,7 +7,7 @@ from .models import GeoLocation, HabitatClass, Habitat, Domain, Kingdom, Family,
 @admin.register(GeoLocation)
 class GeoLocationAdmin(admin.ModelAdmin):
     list_display = (
-        'geoinfo_id',
+        'geolocation_id',
         'name',
         'coordinates_DD_lat',
         'coordinates_DD_long',

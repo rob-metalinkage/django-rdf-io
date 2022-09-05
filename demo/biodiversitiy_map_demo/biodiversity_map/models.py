@@ -1,4 +1,5 @@
 from django.db import models
+from rdf_io.models import *
 
 class SKOS_Biodiversity:
     @staticmethod
@@ -24,7 +25,7 @@ class SKOS_Biodiversity:
 
 class GeoLocation(models.Model):
     """ generic geo location information class to store location data, like DD: 54.0915461, 13.4028547 """
-    geoinfo_id = models.AutoField(primary_key=True)
+    geolocation_id = models.AutoField(primary_key=True)
     name = models.TextField(unique=True, help_text="Unique location name")
     coordinates_DD_lat = models.DecimalField(max_digits=20, decimal_places=9, default=54.0915068, 
                          help_text="in Decimal degrees (DD) - latitude, e.g., 41.40338")

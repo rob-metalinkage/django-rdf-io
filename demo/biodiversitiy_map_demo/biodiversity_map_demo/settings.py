@@ -40,7 +40,7 @@ INSTALLED_APPS = [
     'django_extensions',
     'django.contrib.admindocs',
     'rdf_io',
-    'skosxl',
+    #'skosxl',
     'biodiversity_map',
 ]
 

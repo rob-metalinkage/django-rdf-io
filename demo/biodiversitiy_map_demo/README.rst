@@ -41,24 +41,42 @@ Installation
 -------------
 
 Requirements to run the demo
- - django > 3.0
- - python > 3.6
+ - django >= 4
+ - python >= 3.9
  - an installed instance of a graph databse with Linded Data Protocol (LDP) support, like virtuoso, ...
    alternatively: a running instance of rdf4j
 
 1. install django-rdf-io as described in the django-rdf-io README.
-1. additionally install django-skosxl as described there, since it is highly recommended to use the 
+
+(1. additionally install django-skosxl as described there, since it is highly recommended to use the 
    [SKOS data model](https://www.w3.org/TR/skos-reference/) to describe relations between your data model and external ontologies.
-1. the connection parameters to the graph database are set in $SERVER/admin/rdf_io/configVar
+)
+1. the connection parameters to the graph database are set in Django admin page:  $SERVER/admin/rdf_io/configVar
 
 Usage / running the demo
 --------------------------
 
+  
+  # running the virtuoso  quadstore database docker with docker-compose
+  docker-compose -f docker-compose-dev.yml --build -d up
+
+
+  # running the biodiversity demo in a development environment 
   cd biodiversity_map
+  python manage.py makemigrations rdf_io 
   python3 mange.py makemigrations biodiversity_map
   python3 mange.py migrate
+
+  python manage.py createsuperuser
+
   python3 mange.py runserver
   
+  # now visit localhost:8000/admin in your browser and add config in the rdf-io section
+
+   RDFSERVER
+   
+   RDFSERVER_API
+
   # now visit localhost:8000/admin in your browser and add the mappings in the rdf-io section
 
   # to retrive some rdfs manually, just ender a url to a model id in the address line of your browser, like e.g.

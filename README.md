@@ -30,7 +30,7 @@ pip install -e (where you put it)
 ```
 in your master django project:
 * add 'rdf_io' to the INSTALLED_APPS  in settings.py
-* add    ` url(r"^rdf_io/", include('rdf_io.urls'))`  to urls.py
+* add    `path("rdf_io/", include('rdf_io.urls'))`  to urls.py
 * optionally define setting for RDFSERVER and RDFSERVER_API
 * run manage.py makemigrations
 * run manage.py migrate
