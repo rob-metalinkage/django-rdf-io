@@ -8,15 +8,10 @@ from builtins import object
 import logging
 logger = logging.getLogger(__name__)
 
-try:
-    from django.utils.encoding import python_2_unicode_compatible
-except:
-    from six import python_2_unicode_compatible
-
 from django.db import models
 from django.conf import settings
 
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 # for django 1.7 +
 from django.contrib.contenttypes.fields import GenericForeignKey
 #from django.contrib.contenttypes.generic import GenericForeignKey
@@ -464,7 +459,7 @@ class RDFpath_Field(models.CharField):
     validators = [ validate_propertypath, ]
     def __init__(self, *args, **kwargs):
         kwargs['max_length'] = 500
-        kwargs['help_text']=_(u'space separated list of RDF property URIs (in form a:b or full URI) representing a nested set of properties in an RDF graph')
+        kwargs['help_text']=_('space separated list of RDF property URIs (in form a:b or full URI) representing a nested set of properties in an RDF graph')
         super( RDFpath_Field, self).__init__(*args, **kwargs)
         
 class CURIE_Field(models.CharField):
@@ -475,7 +470,7 @@ class CURIE_Field(models.CharField):
     validators = [ validate_urisyntax, ]
     def __init__(self, *args, **kwargs):
         kwargs['max_length'] = 200
-        kwargs['help_text']=_(u'use a:b or full URI')
+        kwargs['help_text']=_('use a:b or full URI')
         super( CURIE_Field, self).__init__(*args, **kwargs)
     
 class EXPR_Field(models.CharField):
@@ -485,7 +480,7 @@ class EXPR_Field(models.CharField):
     literal_form=None
     def __init__(self, *args, **kwargs):
         kwargs['max_length'] = 400
-        kwargs['help_text']=_(u'for a literal, use "quoted" syntax, for nested attribute use syntax a.b.c')
+        kwargs['help_text']=_('for a literal, use "quoted" syntax, for nested attribute use syntax a.b.c')
         super( EXPR_Field, self).__init__(*args, **kwargs)
 
 
@@ -496,7 +491,7 @@ class FILTER_Field(models.CharField):
 
     def __init__(self, *args, **kwargs):
         kwargs['max_length'] = 400
-        kwargs['help_text']=_(u'path=value, eg label__label_text="frog"')
+        kwargs['help_text']=_('path=value, eg label__label_text="frog"')
         super( FILTER_Field, self).__init__(*args, **kwargs)
         
     
@@ -515,7 +510,7 @@ class Namespace(models.Model) :
     
     uri = models.CharField('uri',max_length=100, unique=True, null=False)
     prefix = models.CharField('prefix',max_length=8,unique=True,null=False)
-    notes = models.TextField(_(u'change note'),blank=True)
+    notes = models.TextField(_('change note'),blank=True)
 
     def natural_key(self):
         return(self.uri,)
@@ -533,9 +528,9 @@ class Namespace(models.Model) :
             return None
       
     class Meta(object): 
-        verbose_name = _(u'namespace')
-        verbose_name_plural = _(u'namespaces')
-        
+        verbose_name = _('namespace')
+        verbose_name_plural = _('namespaces')
+      
     def __unicode__(self):
         return self.uri    
 
@@ -557,13 +552,13 @@ class GenericMetaProp(models.Model) :
         Works with the namespace object to allow short forms of metadata to be displayed
     """
     objects = GenericMetaPropManager()
-    namespace = models.ForeignKey(Namespace,models.PROTECT,blank=True, null=True, verbose_name=_(u'namespace'))
-    propname =  models.CharField(_(u'name'),blank=True,max_length=250,editable=True)
+    namespace = models.ForeignKey(Namespace,models.PROTECT,blank=True, null=True, verbose_name=_('namespace'))
+    propname =  models.CharField(_('name'),blank=True,max_length=250,editable=True)
     uri = CURIE_Field(blank=True, unique=True)
-    definition  = models.TextField(_(u'definition'), blank=True)
+    definition  = models.TextField(_('definition'), blank=True)
     def natural_key(self):
         return  ( ":".join((self.namespace.prefix,self.propname)) if self.namespace else self.uri , )
-    def __unicode__(self):              # __unicode__ on Python 2
+    def __str__(self):              # _!_unicode__ on Python 2
         return self.natural_key()[0]
     def asURI(self):
         """ Returns fully qualified uri form of property """
@@ -594,9 +589,9 @@ class AttachedMetadata(models.Model):
         extensible metadata using rdf_io managed reusable generic metadata properties
     """
     metaprop   =  models.ForeignKey(GenericMetaProp, models.PROTECT,verbose_name='property') 
-    value = models.CharField(_(u'value'),max_length=2000)
-    def __unicode__(self):
-        return str(self.metaprop.__unicode__())   
+    value = models.CharField(_('value'),max_length=2000)
+    def __str__(self):
+        return str(self.metaprop.__str__())   
     def getRDFValue(self):
         """ returns value in appropriate datatype """
         return makenode(value)
@@ -615,14 +610,14 @@ class ObjectType(models.Model):
         Object types may be URI or CURIEs using declared prefixes
     """
     objects = ObjectTypeManager()
-    uri = CURIE_Field(_(u'URI'),blank=False,editable=True)
-    label = models.CharField(_(u'Label'),blank=False,max_length=250,editable=True)
+    uri = CURIE_Field(_('URI'),blank=False,editable=True)
+    label = models.CharField(_('Label'),blank=False,max_length=250,editable=True)
     
     def natural_key(self):
         return (self.uri,)
     
     # check short form is registered
-    def __unicode__(self):              # __unicode__ on Python 2
+    def __str__(self):              # _!_unicode__ on Python 2
         return " -- ".join((self.uri,self.label ))
 
 class ObjectMappingManager(models.Manager):
@@ -635,20 +630,18 @@ class ObjectMapping(models.Model):
     """
     objects = ObjectMappingManager()
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    name = models.CharField(_(u'Name'),help_text=_(u'unique identifying label'),unique=True,blank=False,max_length=250,editable=True)
-    auto_push = models.BooleanField(_(u'auto_push'),help_text=_(u'set this to push updates to these object to the RDF store automatically'))
-    id_attr = models.CharField(_(u'ID Attribute'),help_text=_(u'for nested attribute use syntax a.b.c'),blank=False,max_length=250,editable=True)
-    target_uri_expr = EXPR_Field(_(u'target namespace expression'), blank=False,editable=True)
-    obj_type = models.ManyToManyField(ObjectType, help_text=_(u'set this to generate a object rdf:type X statement' ))
-    filter = FILTER_Field(_(u'Filter'), null=True, blank=True ,editable=True)
+    name = models.CharField(_('Name'),help_text=_('unique identifying label'),unique=True,blank=False,max_length=250,editable=True)
+    auto_push = models.BooleanField(_('auto_push'),help_text=_('set this to push updates to these object to the RDF store automatically'))
+    id_attr = models.CharField(_('ID Attribute'),help_text=_('for nested attribute use syntax a.b.c'),blank=False,max_length=250,editable=True)
+    target_uri_expr = EXPR_Field(_('target namespace expression'), blank=False,editable=True)
+    obj_type = models.ManyToManyField(ObjectType, help_text=_('set this to generate a object rdf:type X statement' ))
+    filter = FILTER_Field(_('Filter'), null=True, blank=True ,editable=True)
     def natural_key(self):
         return (self.name,)    
   
-    def __unicode__(self):              # __unicode__ on Python 2
+    def __str__(self):              # _!_unicode__ on Python 2
         return self.name 
-        
-    def __str__(self):
-        return str( self.__unicode__())
+ 
     @staticmethod
     def new_mapping(object_type,content_type_label, title, idfield, tgt,filter=None, auto_push=False, app_label=None):
         if not app_label :
@@ -656,7 +649,7 @@ class ObjectMapping(models.Model):
                 (app_label,content_type_label) = content_type_label.split(':')
             except:
                 pass # hope we can find it?
-        content_type = ContentType.objects.get(app_label=app_label.lower(),model=content_type_label.lower())
+        content_type = ContentType.objects.get(app_label=app_label.lower().strip(),model=content_type_label.lower().strip() )
         defaults =         { "auto_push" : auto_push , 
               "id_attr" : idfield,
               "target_uri_expr" : tgt,
@@ -680,12 +673,12 @@ class AttributeMapping(models.Model):
         records a mapping from an object mapping that defines a relation from the object to a value using a predicate
     """
     scope = models.ForeignKey(ObjectMapping,models.PROTECT)
-    attr = EXPR_Field(_(u'source attribute'),help_text=_(u'literal value or path (attribute[filter].)* with optional @element or ^^element eg locationname[language=].name@language.  filter values are empty (=not None), None, or a string value'),blank=False,editable=True)
-    # filter = FILTER_Field(_(u'Filter'), null=True, blank=True,editable=True)
-    predicate = CURIE_Field(_(u'predicate'),blank=False,editable=True,help_text=_(u'URI or CURIE. Use :prop.prop.prop form to select a property of the mapped object to use as the predicate'))
-    is_resource = models.BooleanField(_(u'as URI'))
+    attr = EXPR_Field(_('source attribute'),help_text=_('literal value or path (attribute[filter].)* with optional @element or ^^element eg locationname[language=].name@language.  filter values are empty (=not None), None, or a string value'),blank=False,editable=True)
+    # filter = FILTER_Field(_('Filter'), null=True, blank=True,editable=True)
+    predicate = CURIE_Field(_('predicate'),blank=False,editable=True,help_text=_('URI or CURIE. Use :prop.prop.prop form to select a property of the mapped object to use as the predicate'))
+    is_resource = models.BooleanField(_('as URI'))
     
-    def __unicode__(self):
+    def __str__(self):
         return ( ' '.join((self.attr, self.predicate )))
 
 class EmbeddedMapping(models.Model):
@@ -694,12 +687,12 @@ class EmbeddedMapping(models.Model):
         records a mapping for a complex data structure
     """
     scope = models.ForeignKey(ObjectMapping,models.PROTECT,)
-    attr = EXPR_Field(_(u'source attribute'),help_text=_(u'attribute - if empty nothing generated, if multivalued will be iterated over'))
-    predicate = CURIE_Field(_(u'predicate'),blank=False,editable=True, help_text=_(u'URI or CURIE. Use :prop.prop.prop form to select a property of the mapped object to use asthe predicate'))
-    struct = models.TextField(_(u'object structure'),max_length=2000, help_text=_(u' ";" separated list of <em>predicate</em> <em>attribute expr</em>  where attribute expr a model field or "literal" or <uri> - in future may be an embedded struct inside {} '),blank=False,editable=True)
-    use_blank = models.BooleanField(_(u'embed as blank node'), default=True)
+    attr = EXPR_Field(_('source attribute'),help_text=_('attribute - if empty nothing generated, if multivalued will be iterated over'))
+    predicate = CURIE_Field(_('predicate'),blank=False,editable=True, help_text=_('URI or CURIE. Use :prop.prop.prop form to select a property of the mapped object to use asthe predicate'))
+    struct = models.TextField(_('object structure'),max_length=2000, help_text=_(' ";" separated list of <em>predicate</em> <em>attribute expr</em>  where attribute expr a model field or "literal" or <uri> - in future may be an embedded struct inside {} '),blank=False,editable=True)
+    use_blank = models.BooleanField(_('embed as blank node'), default=True)
     
-    def __unicode__(self):
+    def __str__(self):
         return ( ' '.join(('struct:',self.attr, self.predicate )))
 
 class ChainedMapping(models.Model):
@@ -708,11 +701,11 @@ class ChainedMapping(models.Model):
         Chains to a specific mapping to nest the resulting graph within the current serialisation
     """
     scope = models.ForeignKey(ObjectMapping,models.PROTECT,editable=False, )
-    attr = EXPR_Field(_(u'source attribute'),help_text=_(u'attribute - if empty nothing generated, if multivalued will be iterated over'))
-    predicate = CURIE_Field(_(u'predicate'),blank=False,editable=True, help_text=_(u'URI or CURIE. Use :prop.prop.prop form to select a property of the mapped object to use asthe predicate'))
-    chainedMapping = models.ForeignKey(ObjectMapping, models.PROTECT,blank=False,editable=True, related_name='chained',help_text=_(u'Mapping to nest, for each value of attribute. may be recursive'))
+    attr = EXPR_Field(_('source attribute'),help_text=_('attribute - if empty nothing generated, if multivalued will be iterated over'))
+    predicate = CURIE_Field(_('predicate'),blank=False,editable=True, help_text=_('URI or CURIE. Use :prop.prop.prop form to select a property of the mapped object to use asthe predicate'))
+    chainedMapping = models.ForeignKey(ObjectMapping, models.PROTECT,blank=False,editable=True, related_name='chained',help_text=_('Mapping to nest, for each value of attribute. may be recursive'))
     
-    def __unicode__(self):
+    def __str__(self):
         return ( ' '.join(('chained mapping:',self.attr, self.predicate, self.chainedMapping.name )))
  
 MODE_CHOICES = (
@@ -728,12 +721,9 @@ class ConfigVar(models.Model):
     value=models.CharField(max_length=255, null=False, blank=True , verbose_name='Variable value')
     mode=models.CharField( verbose_name='Mode scope', choices=MODE_CHOICES,null=True,blank=True,max_length=10 )
     
-    def __unicode__(self):
+    def __str__(self):
         return ( ' '.join(('var:',self.var, ' (', str(self.mode), ') = ', self.value )))
     
-    def __str__(self):
-        return str( self.__unicode__())
-     
     @staticmethod
     def getval(var,mode):
         try:
@@ -810,12 +800,9 @@ class ServiceBinding(models.Model):
     on_delete_service=models.ForeignKey('ServiceBinding', models.PROTECT, related_name='on_delete',verbose_name='Deletion service', blank=True, null=True, help_text='This will be invoked on object deletion if specified, and also if the binding is "replace" - which allows for a specific pre-deletion step if not supported by the repository API natively')
     on_fail_service=models.ForeignKey('ServiceBinding', models.PROTECT, related_name='on_fail',verbose_name='On fail service', blank=True, null=True, help_text='Overrides default failure reporting')
 
-    def __unicode__(self):
-        return self.title + "(" + self.service_api + " : " + self.service_url + ")"
-    
     def __str__(self):
-        return str( self.__unicode__())
-        
+        return self.title + "(" + self.service_api + " : " + self.service_url + ")"
+     
     @staticmethod 
     def get_service_bindings(model,bindingtypes):
         ct = ContentType.objects.get(model=model)
@@ -855,7 +842,7 @@ TYPE_CHOICES = (
       ( TYPE_QUERY, 'Query template - SPARQL - for future use' ),
       ( TYPE_VALIDATION, 'Validation rule - for future use' ), 
     )
-@python_2_unicode_compatible       
+       
 class ImportedResource(models.Model):
 
     
@@ -873,11 +860,11 @@ class ImportedResource(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
     # add per user details?
  
-    def __unicode__(self):
-        return ( ' '.join( [_f for _f in (self.resource_type,':', self.file.name, self.remote ) if _f]))
+    def __str__(self):
+        return ( ' '.join( [_f for _f in (self.resource_type,':', self.file.__str__(), self.remote ) if _f]))
  
     def __str__(self):
-        return str( self.__unicode__() )
+        return ( ' '.join( [_f for _f in (self.resource_type,':', self.file.__str__(), self.remote ) if _f]))
         
 #    def clean(self):
 #        import fields; pdb.set_trace()
@@ -894,7 +881,7 @@ class ImportedResource(models.Model):
         if(not self.subtype):
             self.subtype = ContentType.objects.get_for_model(self.__class__)
         if not self.description:
-            self.description = self.__unicode__()
+            self.description = self.__str__()
         self.savedgraph = None
         super(ImportedResource, self).save(*args,**kwargs)
         
@@ -963,7 +950,7 @@ def execute_service_chain(model,obj, mode, gr, chain):
     for next_binding in chain :
         newgr = gr  # start off with original RDF graph for each new chain
         while next_binding :
-            logger.info ( " -- ".join( (mode, str(obj), next_binding.__unicode__() ) ) )
+            logger.info ( " -- ".join( (mode, str(obj), next_binding.__str__() ) ) )
             if next_binding.binding_type == ServiceBinding.INFERENCE :
                 newgr = inference(model, obj, next_binding, newgr, mode)
             elif next_binding.binding_type in ( ServiceBinding.PERSIST_UPDATE, ServiceBinding.PERSIST_REPLACE, ServiceBinding.PERSIST_CREATE ) :

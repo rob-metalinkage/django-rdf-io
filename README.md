@@ -5,7 +5,7 @@ Utilities to link Django to RDF stores and inferencers.
 Why: Allows semantic data models and rules to be used to generate rich views of content, and expose standardised access and query interfaces - such as SPARQL and the Linked Data Platform.  Conversely, allow use of Django to manage content in RDF stores :-)
 
 ## compatibility
-Tested with django 1.11 + python 2.7 and django 3.0 with python 3.8
+Tested with python 3.10 + django 4.0.2 
 
 ## Features
 * RDF serializer for Django objects driven by editable mapping rules
@@ -30,7 +30,7 @@ pip install -e (where you put it)
 ```
 in your master django project:
 * add 'rdf_io' to the INSTALLED_APPS  in settings.py
-* add    ` url(r"^rdf_io/", include('rdf_io.urls'))`  to urls.py
+* add    `path("rdf_io/", include('rdf_io.urls'))`  to urls.py
 * optionally define setting for RDFSERVER and RDFSERVER_API
 * run manage.py makemigrations
 * run manage.py migrate
