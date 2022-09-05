@@ -1,5 +1,5 @@
 # # -*- coding:utf-8 -*-
-#from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect
 from rdf_io.models import *
 from ..protocols import push_to_store,inference,rdf_delete
 
@@ -179,9 +179,8 @@ def publish_set(queryset, model,check=False,mode='PUBLISH'):
                     continue
             except Exception as e :
                 yield("Exception: %s" % (str(e), ) )
-        yield ("publishing %s " % (obj,) )
+        yield ("publishing %s " % (str(obj),) )
         try:
-            # import pdb; pdb.set_trace()
             publish( obj, model, oml,mode=mode)
             yield ("... Success")
         except Exception as e :
