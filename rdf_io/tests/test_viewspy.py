@@ -6,6 +6,8 @@ from django.contrib.auth.models import AnonymousUser, User
 # from rdf_io.tests import ObjectMappingTestCase
 from .test_mappings import SerialisationSetupTestCase
 
+from rdf_io.signals import clear_signals
+
 class RequestTestCase(SerialisationSetupTestCase):
     """ Test case for a view request
     
@@ -13,6 +15,8 @@ class RequestTestCase(SerialisationSetupTestCase):
     def setUp(self):
         super(RequestTestCase,self).setUp()
         self.factory = RequestFactory()
+        clear_signals()
+        #request = self.factory.get('/rdf_io/ctl_signals/off')
 
         
     def test_ttl_serialise(self):
